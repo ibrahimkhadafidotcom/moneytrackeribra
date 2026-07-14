@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#111827" />
-  <title>Money Tracker Offline — Budgeting Edition</title>
+  <title>Money Tracker Offline — Realtime Balance</title>
   <link rel="manifest" href="manifest.json" />
   <style>
     :root{
@@ -142,6 +142,33 @@
     }
     .toast.show{display:block}
     .mini{font-size:12px;color:var(--muted)}
+    .realtime-balance-card{
+      background:
+        linear-gradient(135deg, rgba(17,24,39,.96), rgba(31,41,55,.94)),
+        #111827;
+      color:#fff;
+      border-color:#111827;
+      margin-bottom:14px;
+    }
+    .realtime-balance-card .hint{color:rgba(255,255,255,.72)}
+    .realtime-balance-card .section-title h2{color:#fff}
+    .account-card-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+    @media(max-width:900px){.account-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:560px){.account-card-grid{grid-template-columns:1fr}}
+    .account-balance-card{
+      background:rgba(255,255,255,.09);
+      border:1px solid rgba(255,255,255,.16);
+      border-radius:18px;
+      padding:14px;
+      backdrop-filter: blur(12px);
+    }
+    .account-balance-card .name{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:rgba(255,255,255,.66);font-weight:900}
+    .account-balance-card .amount{font-size:24px;font-weight:950;margin-top:8px}
+    .account-balance-card .movement{display:flex;justify-content:space-between;gap:8px;margin-top:10px;font-size:11px;color:rgba(255,255,255,.74)}
+    .account-balance-card .movement b{color:#fff}
+    .balance-positive{color:#bbf7d0}
+    .balance-negative{color:#fecaca}
+
     .hero-budget{
       background:
         radial-gradient(circle at 15% 15%, rgba(37,99,235,.10), transparent 28%),
@@ -182,7 +209,7 @@
       <div class="logo">₿</div>
       <div>
         <h1>Money Tracker Offline</h1>
-        <div class="subtitle">Visual Budgeting Edition · Offline-first · Data tersimpan di browser/device</div>
+        <div class="subtitle">Visual Budgeting + Realtime Balance · Offline-first · Data tersimpan di browser/device</div>
       </div>
     </div>
     <nav class="nav">
@@ -204,6 +231,17 @@
         <select id="activePeriodSelect" style="min-width:240px"></select>
         <button class="soft" onclick="renderAll()">Refresh</button>
       </div>
+    </div>
+
+    <div class="card realtime-balance-card">
+      <div class="section-title" style="margin-top:0">
+        <div>
+          <h2>Saldo Rekening Sekarang</h2>
+          <div class="hint">Realtime berdasarkan saldo awal rekening + semua pemasukan - semua pengeluaran + transfer antar rekening.</div>
+        </div>
+        <div class="pill transfer">Total: <span id="realtimeTotalBalance">Rp0</span></div>
+      </div>
+      <div id="realtimeAccountCards" class="account-card-grid"></div>
     </div>
 
     <div class="grid cols-4">
@@ -545,7 +583,7 @@
   </section>
 </main>
 
-<div class="footer">Money Tracker Offline — Budgeting Edition · MVP v3</div>
+<div class="footer">Money Tracker Offline — Budgeting Edition · MVP v4</div>
 <div id="toast" class="toast"></div>
 
 <script>
@@ -847,6 +885,83 @@ function saveManualInput(){
   showToast("Transaksi manual berhasil disimpan.");
 }
 
+
+function computeAccountBalancesRealtime(){
+  const balances = {};
+  const income = {};
+  const expense = {};
+  const transferIn = {};
+  const transferOut = {};
+
+  state.accounts.forEach(a => {
+    balances[a.name] = number(a.startBalance);
+    income[a.name] = 0;
+    expense[a.name] = 0;
+    transferIn[a.name] = 0;
+    transferOut[a.name] = 0;
+  });
+
+  for(const tx of state.transactions){
+    if(!balances.hasOwnProperty(tx.account)){
+      balances[tx.account] = 0;
+      income[tx.account] = 0;
+      expense[tx.account] = 0;
+      transferIn[tx.account] = 0;
+      transferOut[tx.account] = 0;
+    }
+
+    const amt = number(tx.amount);
+
+    if(tx.type === "Pemasukan"){
+      balances[tx.account] += amt;
+      income[tx.account] += amt;
+    } else if(tx.type === "Pengeluaran"){
+      balances[tx.account] -= amt;
+      expense[tx.account] += amt;
+    } else if(tx.type === "Transfer"){
+      balances[tx.account] -= amt;
+      transferOut[tx.account] += amt;
+
+      if(tx.toAccount){
+        if(!balances.hasOwnProperty(tx.toAccount)){
+          balances[tx.toAccount] = 0;
+          income[tx.toAccount] = 0;
+          expense[tx.toAccount] = 0;
+          transferIn[tx.toAccount] = 0;
+          transferOut[tx.toAccount] = 0;
+        }
+        balances[tx.toAccount] += amt;
+        transferIn[tx.toAccount] += amt;
+      }
+    }
+  }
+
+  return {balances, income, expense, transferIn, transferOut};
+}
+
+function renderRealtimeBalances(){
+  const targetTotal = document.getElementById("realtimeTotalBalance");
+  const targetCards = document.getElementById("realtimeAccountCards");
+  if(!targetTotal || !targetCards) return;
+
+  const data = computeAccountBalancesRealtime();
+  const accountNames = state.accounts.map(a => a.name);
+  const total = accountNames.reduce((sum, name) => sum + number(data.balances[name]), 0);
+
+  targetTotal.textContent = rupiah(total);
+
+  targetCards.innerHTML = accountNames.map(name => {
+    const bal = number(data.balances[name]);
+    const cls = bal >= 0 ? "balance-positive" : "balance-negative";
+    return `<div class="account-balance-card">
+      <div class="name">${name}</div>
+      <div class="amount ${cls}">${rupiah(bal)}</div>
+      <div class="movement"><span>Masuk</span><b>${rupiah(number(data.income[name]) + number(data.transferIn[name]))}</b></div>
+      <div class="movement"><span>Keluar</span><b>${rupiah(number(data.expense[name]) + number(data.transferOut[name]))}</b></div>
+    </div>`;
+  }).join("");
+}
+
 function computeAccountBalances(period){
   const balances = {};
   state.accounts.forEach(a => balances[a.name] = number(a.startBalance));
@@ -1043,6 +1158,7 @@ function renderVisualDashboard(period, groups, plans){
 }
 
 function renderDashboard(){
+  renderRealtimeBalances();
   const period = getActivePeriod();
   const groups = actualByGroup(period);
   const income = number(groups.Income);
