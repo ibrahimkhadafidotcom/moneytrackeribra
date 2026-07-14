@@ -1,0 +1,1388 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#111827" />
+  <title>Money Tracker Offline — Budgeting Edition</title>
+  <link rel="manifest" href="manifest.json" />
+  <style>
+    :root{
+      --bg:#f4f5f7;
+      --panel:#ffffff;
+      --panel2:#f9fafb;
+      --text:#111827;
+      --muted:#6b7280;
+      --border:#e5e7eb;
+      --soft:#eef2ff;
+      --dark:#111827;
+      --green:#166534;
+      --red:#991b1b;
+      --yellow:#92400e;
+      --blue:#1d4ed8;
+      --shadow:0 10px 25px rgba(15,23,42,.08);
+      --radius:18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:var(--bg);
+      color:var(--text);
+    }
+    header{
+      position:sticky;
+      top:0;
+      z-index:10;
+      background:rgba(244,245,247,.92);
+      backdrop-filter: blur(16px);
+      border-bottom:1px solid var(--border);
+    }
+    .wrap{max-width:1220px;margin:0 auto;padding:18px;}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .brand{display:flex;align-items:center;gap:12px}
+    .logo{
+      width:42px;height:42px;border-radius:14px;background:#111827;color:#fff;
+      display:grid;place-items:center;font-weight:900;box-shadow:var(--shadow)
+    }
+    h1{font-size:20px;margin:0}
+    .subtitle{font-size:13px;color:var(--muted);margin-top:2px}
+    .nav{display:flex;gap:8px;flex-wrap:wrap}
+    button,.btn{
+      border:1px solid var(--border);
+      background:var(--panel);
+      color:var(--text);
+      padding:10px 13px;
+      border-radius:12px;
+      cursor:pointer;
+      font-weight:700;
+      font-size:13px;
+      transition:.15s;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+    }
+    button:hover,.btn:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
+    button.primary{background:#111827;color:white;border-color:#111827}
+    button.danger{background:#fee2e2;color:#991b1b;border-color:#fecaca}
+    button.soft{background:#eef2ff;color:#1d4ed8;border-color:#c7d2fe}
+    button.good{background:#dcfce7;color:#166534;border-color:#bbf7d0}
+    button.warn{background:#fef3c7;color:#92400e;border-color:#fde68a}
+    main{max-width:1220px;margin:0 auto;padding:18px;}
+    .tabs{display:none}
+    .tab{display:none}
+    .tab.active{display:block}
+    .grid{display:grid;gap:14px}
+    .grid.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .grid.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .grid.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    @media(max-width:900px){.grid.cols-4,.grid.cols-3,.grid.cols-2{grid-template-columns:1fr}}
+    .card{
+      background:var(--panel);
+      border:1px solid var(--border);
+      border-radius:var(--radius);
+      padding:16px;
+      box-shadow:var(--shadow);
+    }
+    .card h2{font-size:17px;margin:0 0 12px}
+    .card h3{font-size:15px;margin:0 0 10px}
+    .metric .label{font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+    .metric .value{font-size:24px;font-weight:900;margin-top:6px}
+    .metric small{display:block;margin-top:5px;color:var(--muted)}
+    input,select,textarea{
+      width:100%;
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:10px 11px;
+      background:#fff;
+      font:inherit;
+      outline:none;
+    }
+    input:focus,select:focus,textarea:focus{border-color:#111827;box-shadow:0 0 0 3px rgba(17,24,39,.08)}
+    label{font-size:12px;color:var(--muted);font-weight:800;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+    .field{margin-bottom:12px}
+    .row{display:grid;grid-template-columns:repeat(12,1fr);gap:10px;align-items:end}
+    .col-2{grid-column:span 2}.col-3{grid-column:span 3}.col-4{grid-column:span 4}.col-5{grid-column:span 5}.col-6{grid-column:span 6}.col-7{grid-column:span 7}.col-8{grid-column:span 8}.col-12{grid-column:span 12}
+    @media(max-width:900px){.row>*{grid-column:span 12!important}}
+    .hint{font-size:12px;color:var(--muted);line-height:1.5}
+    .pill{
+      display:inline-flex;align-items:center;gap:6px;
+      padding:6px 9px;border-radius:999px;font-size:12px;font-weight:800;border:1px solid var(--border);background:var(--panel2)
+    }
+    .pill.income{background:#dcfce7;color:#166534;border-color:#bbf7d0}
+    .pill.expense{background:#fee2e2;color:#991b1b;border-color:#fecaca}
+    .pill.transfer{background:#e0f2fe;color:#075985;border-color:#bae6fd}
+    .pill.needs{background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe}
+    .pill.wants{background:#fef3c7;color:#92400e;border-color:#fde68a}
+    .pill.debt{background:#fce7f3;color:#9d174d;border-color:#fbcfe8}
+    .pill.saving{background:#ecfdf5;color:#047857;border-color:#a7f3d0}
+    table{width:100%;border-collapse:separate;border-spacing:0;overflow:hidden}
+    th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left;font-size:13px;vertical-align:top}
+    th{color:#374151;background:#f9fafb;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+    tr:last-child td{border-bottom:0}
+    .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:16px;background:#fff}
+    .right{text-align:right}
+    .muted{color:var(--muted)}
+    .actions{display:flex;gap:8px;flex-wrap:wrap}
+    .notice{padding:12px;border-radius:14px;background:#eef2ff;color:#3730a3;border:1px solid #c7d2fe;font-size:13px;line-height:1.5}
+    .progress{height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden}
+    .bar{height:100%;background:#111827;width:0%;border-radius:999px}
+    .bar.good{background:#16a34a}.bar.warn{background:#f59e0b}.bar.bad{background:#dc2626}.bar.blue{background:#2563eb}
+    .status-good{color:#166534;font-weight:900}
+    .status-warn{color:#92400e;font-weight:900}
+    .status-bad{color:#991b1b;font-weight:900}
+    .empty{padding:30px;text-align:center;color:var(--muted)}
+    .section-title{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:18px 0 10px}
+    .section-title h2{margin:0;font-size:18px}
+    .footer{color:var(--muted);font-size:12px;text-align:center;padding:25px}
+    .toast{
+      position:fixed;right:18px;bottom:18px;background:#111827;color:#fff;padding:13px 15px;border-radius:14px;
+      box-shadow:var(--shadow);display:none;z-index:99;font-size:13px;max-width:360px
+    }
+    .toast.show{display:block}
+    .mini{font-size:12px;color:var(--muted)}
+    .hero-budget{
+      background:
+        radial-gradient(circle at 15% 15%, rgba(37,99,235,.10), transparent 28%),
+        radial-gradient(circle at 85% 20%, rgba(22,163,74,.10), transparent 28%),
+        #ffffff;
+    }
+    .hero-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:16px;align-items:center}
+    @media(max-width:900px){.hero-grid{grid-template-columns:1fr}}
+    .status-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+    @media(max-width:700px){.status-grid{grid-template-columns:1fr}}
+    .status-card{
+      border:1px solid var(--border);
+      border-radius:16px;
+      padding:12px;
+      background:rgba(255,255,255,.78);
+    }
+    .status-card .top{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px}
+    .status-card b{font-size:14px}
+    .status-card .big{font-size:18px;font-weight:900;margin:6px 0}
+    .chartbox{width:100%;min-height:230px;display:grid;place-items:center}
+    .donut-wrap{display:flex;gap:14px;align-items:center;justify-content:center;flex-wrap:wrap}
+    .legend{display:grid;gap:7px;font-size:12px}
+    .legend-item{display:flex;align-items:center;gap:7px}
+    .dot{width:10px;height:10px;border-radius:999px;background:#111827;display:inline-block}
+    .mini-bar-row{display:grid;grid-template-columns:88px 1fr 72px;gap:10px;align-items:center;margin:12px 0}
+    .mini-bar-track{height:12px;background:#e5e7eb;border-radius:999px;overflow:hidden;position:relative}
+    .mini-bar-fill{height:100%;border-radius:999px;background:#111827;width:0%}
+    .mini-bar-fill.actual{opacity:.82}
+    .mini-bar-label{font-size:12px;font-weight:800}
+    .mini-bar-value{font-size:12px;text-align:right;color:var(--muted);font-weight:800}
+
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap topbar">
+    <div class="brand">
+      <div class="logo">₿</div>
+      <div>
+        <h1>Money Tracker Offline</h1>
+        <div class="subtitle">Visual Budgeting Edition · Offline-first · Data tersimpan di browser/device</div>
+      </div>
+    </div>
+    <nav class="nav">
+      <button class="navBtn primary" data-tab="dashboard">Dashboard</button>
+      <button class="navBtn" data-tab="input">Input</button>
+      <button class="navBtn" data-tab="budgeting">Budgeting</button>
+      <button class="navBtn" data-tab="transactions">Transaksi</button>
+      <button class="navBtn" data-tab="masters">Master</button>
+      <button class="navBtn" data-tab="backup">Backup</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section id="dashboard" class="tab active">
+    <div class="section-title">
+      <h2>Visual Money Dashboard</h2>
+      <div class="actions">
+        <select id="activePeriodSelect" style="min-width:240px"></select>
+        <button class="soft" onclick="renderAll()">Refresh</button>
+      </div>
+    </div>
+
+    <div class="grid cols-4">
+      <div class="card metric">
+        <div class="label">Income Actual</div>
+        <div class="value" id="metricIncome">Rp0</div>
+        <small id="metricIncomePct">0% dari target income</small>
+      </div>
+      <div class="card metric">
+        <div class="label">Expense Actual</div>
+        <div class="value" id="metricExpense">Rp0</div>
+        <small id="metricExpensePct">0% dari budget expense</small>
+      </div>
+      <div class="card metric">
+        <div class="label">Net Cashflow</div>
+        <div class="value" id="metricNet">Rp0</div>
+        <small>Income - expense</small>
+      </div>
+      <div class="card metric">
+        <div class="label">Current Balance</div>
+        <div class="value" id="metricBalance">Rp0</div>
+        <small>Start balance + cashflow</small>
+      </div>
+    </div>
+
+    <div class="card hero-budget" style="margin-top:14px">
+      <div class="hero-grid">
+        <div>
+          <div class="mini">Status Overview</div>
+          <h2 style="margin:4px 0 8px">Budget health periode aktif</h2>
+          <p class="hint">Tampilan ini dibuat mengikuti rasa dashboard sheet: expected vs actual, status, persentase, dan visual progress.</p>
+          <div id="visualStatusOverview" class="status-grid"></div>
+        </div>
+        <div>
+          <div id="visualDonut"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid cols-2" style="margin-top:14px">
+      <div class="card">
+        <h2>Expected vs Actual by Group</h2>
+        <div id="visualActualVsBudgetBars"></div>
+      </div>
+      <div class="card">
+        <h2>Cash Flow Summary</h2>
+        <div id="visualCashFlow" class="table-wrap"></div>
+      </div>
+    </div>
+
+    <div class="grid cols-2" style="margin-top:14px">
+      <div class="card">
+        <h2>Needs Summary</h2>
+        <div id="visualNeeds" class="table-wrap"></div>
+      </div>
+      <div class="card">
+        <h2>Wants Summary</h2>
+        <div id="visualWants" class="table-wrap"></div>
+      </div>
+    </div>
+
+    <div class="grid cols-2" style="margin-top:14px">
+      <div class="card">
+        <h2>Debt Summary</h2>
+        <div id="visualDebt" class="table-wrap"></div>
+      </div>
+      <div class="card">
+        <h2>Income Summary</h2>
+        <div id="visualIncome" class="table-wrap"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <div class="section-title" style="margin-top:0">
+        <h2>Top Budget Progress</h2>
+        <span class="hint">Actual otomatis dari transaksi dalam periode aktif</span>
+      </div>
+      <div id="topBudgetProgress"></div>
+    </div>
+  </section>
+
+  <section id="input" class="tab">
+    <div class="grid cols-2">
+      <div class="card">
+        <h2>Input Cepat seperti Telegram</h2>
+        <div class="notice">
+          Contoh:
+          <br><b>hari ini pengeluaran makan 3000 bolen BCA</b>
+          <br><b>kemarin pengeluaran kendaraan 12000 bensin Dompet</b>
+          <br><b>hari ini pemasukan gaji 5000000 gaji bulanan BCA</b>
+          <br><b>hari ini transfer dompet ke bca 100000</b>
+        </div>
+        <div class="field" style="margin-top:12px">
+          <label>Teks Transaksi</label>
+          <textarea id="quickText" rows="4" placeholder="Tulis transaksi natural language di sini..."></textarea>
+        </div>
+        <div class="actions">
+          <button class="primary" onclick="parseQuickInput()">Preview Parsing</button>
+          <button class="good" onclick="saveQuickInput()">Simpan Langsung</button>
+        </div>
+        <div id="parsePreview" style="margin-top:14px"></div>
+      </div>
+
+      <div class="card">
+        <h2>Input Manual</h2>
+        <div class="row">
+          <div class="field col-6">
+            <label>Tanggal</label>
+            <input type="date" id="manualDate" />
+          </div>
+          <div class="field col-6">
+            <label>Jenis</label>
+            <select id="manualType" onchange="refreshManualCategoryOptions()">
+              <option>Pengeluaran</option>
+              <option>Pemasukan</option>
+              <option>Transfer</option>
+            </select>
+          </div>
+          <div class="field col-6">
+            <label>Kategori</label>
+            <select id="manualCategory"></select>
+          </div>
+          <div class="field col-6">
+            <label>Nominal</label>
+            <input type="number" id="manualAmount" placeholder="30000" />
+          </div>
+          <div class="field col-6">
+            <label>Rekening</label>
+            <select id="manualAccount"></select>
+          </div>
+          <div class="field col-6">
+            <label>Rekening Tujuan Transfer</label>
+            <select id="manualToAccount"></select>
+          </div>
+          <div class="field col-12">
+            <label>Catatan</label>
+            <input id="manualNote" placeholder="Contoh: beli kopi / bensin / gaji bulanan" />
+          </div>
+        </div>
+        <button class="primary" onclick="saveManualInput()">Simpan Transaksi</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="budgeting" class="tab">
+    <div class="grid cols-2">
+      <div class="card">
+        <h2>Setup Periode Budget</h2>
+        <div class="row">
+          <div class="field col-6">
+            <label>Nama Periode</label>
+            <input id="periodName" placeholder="Juli - Agustus 2026" />
+          </div>
+          <div class="field col-3">
+            <label>Mulai</label>
+            <input type="date" id="periodStart" />
+          </div>
+          <div class="field col-3">
+            <label>Selesai</label>
+            <input type="date" id="periodEnd" />
+          </div>
+          <div class="field col-6">
+            <label>Start Balance</label>
+            <input type="number" id="periodStartBalance" placeholder="0" />
+          </div>
+          <div class="field col-6">
+            <label>Set Aktif?</label>
+            <select id="periodIsActive">
+              <option value="Y">Ya</option>
+              <option value="N">Tidak</option>
+            </select>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="primary" onclick="savePeriod()">Simpan Periode</button>
+          <button class="soft" onclick="fillPeriod20to19()">Isi Otomatis 20–19</button>
+        </div>
+        <div class="hint" style="margin-top:10px">Periode aktif dipakai untuk dashboard dan budgeting actual.</div>
+      </div>
+
+      <div class="card">
+        <h2>Tambah Budget Plan</h2>
+        <div class="row">
+          <div class="field col-6">
+            <label>Periode</label>
+            <select id="budgetPeriodSelect"></select>
+          </div>
+          <div class="field col-6">
+            <label>Group</label>
+            <select id="budgetGroup" onchange="refreshBudgetCategoryOptions()">
+              <option>Income</option>
+              <option>Needs</option>
+              <option>Wants</option>
+              <option>Debt</option>
+              <option>Saving</option>
+            </select>
+          </div>
+          <div class="field col-6">
+            <label>Kategori</label>
+            <select id="budgetCategory"></select>
+          </div>
+          <div class="field col-6">
+            <label>Expected / Budget</label>
+            <input type="number" id="budgetAmount" placeholder="1000000" />
+          </div>
+        </div>
+        <button class="primary" onclick="saveBudgetPlan()">Simpan Budget Plan</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <div class="section-title" style="margin-top:0">
+        <h2>Budget Plan vs Actual</h2>
+        <div class="actions">
+          <button class="soft" onclick="seedBudgetFromCategories()">Buat Template Budget dari Kategori</button>
+          <button class="danger" onclick="clearBudgetPlansForActivePeriod()">Hapus Budget Periode Aktif</button>
+        </div>
+      </div>
+      <div id="budgetTable" class="table-wrap"></div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2>Daftar Periode</h2>
+      <div id="periodTable" class="table-wrap"></div>
+    </div>
+  </section>
+
+  <section id="transactions" class="tab">
+    <div class="section-title">
+      <h2>Riwayat Transaksi</h2>
+      <div class="actions">
+        <select id="filterType" onchange="renderTransactions()">
+          <option value="">Semua Jenis</option>
+          <option>Pengeluaran</option>
+          <option>Pemasukan</option>
+          <option>Transfer</option>
+        </select>
+        <select id="filterGroup" onchange="renderTransactions()">
+          <option value="">Semua Group</option>
+          <option>Income</option>
+          <option>Needs</option>
+          <option>Wants</option>
+          <option>Debt</option>
+          <option>Saving</option>
+          <option>Transfer</option>
+        </select>
+        <select id="filterAccount" onchange="renderTransactions()"></select>
+        <button class="soft" onclick="exportTransactionsCSV()">Export CSV</button>
+      </div>
+    </div>
+    <div id="transactionsTable" class="table-wrap"></div>
+  </section>
+
+  <section id="masters" class="tab">
+    <div class="grid cols-2">
+      <div class="card">
+        <h2>Master Kategori</h2>
+        <div class="row">
+          <div class="field col-4">
+            <label>Jenis</label>
+            <select id="catType">
+              <option>Pengeluaran</option>
+              <option>Pemasukan</option>
+              <option>Transfer</option>
+            </select>
+          </div>
+          <div class="field col-4">
+            <label>Group</label>
+            <select id="catGroup">
+              <option>Income</option>
+              <option>Needs</option>
+              <option>Wants</option>
+              <option>Debt</option>
+              <option>Saving</option>
+              <option>Transfer</option>
+            </select>
+          </div>
+          <div class="field col-4">
+            <label>Kategori</label>
+            <input id="catName" placeholder="Kopi" />
+          </div>
+          <div class="field col-12">
+            <label>Alias Keyword, pisahkan koma</label>
+            <input id="catAliases" placeholder="kopi,ngopi,coffee" />
+          </div>
+        </div>
+        <button class="primary" onclick="saveCategory()">Simpan Kategori</button>
+        <div id="categoriesTable" class="table-wrap" style="margin-top:14px"></div>
+      </div>
+
+      <div class="card">
+        <h2>Master Rekening</h2>
+        <div class="row">
+          <div class="field col-8">
+            <label>Nama Rekening</label>
+            <input id="accountName" placeholder="BCA / Dompet / Dana" />
+          </div>
+          <div class="field col-4">
+            <label>Saldo Awal Opsional</label>
+            <input type="number" id="accountStart" placeholder="0" />
+          </div>
+        </div>
+        <button class="primary" onclick="saveAccount()">Simpan Rekening</button>
+        <div id="accountsTable" class="table-wrap" style="margin-top:14px"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="backup" class="tab">
+    <div class="grid cols-2">
+      <div class="card">
+        <h2>Backup & Export</h2>
+        <div class="notice">Backup JSON menyimpan semua data: transaksi, kategori, rekening, periode, dan budget plan.</div>
+        <div class="actions" style="margin-top:14px">
+          <button class="primary" onclick="downloadBackup()">Download Backup JSON</button>
+          <button class="soft" onclick="exportTransactionsCSV()">Export Transaksi CSV</button>
+          <button class="soft" onclick="exportBudgetCSV()">Export Budget CSV</button>
+        </div>
+      </div>
+      <div class="card">
+        <h2>Import Backup</h2>
+        <input type="file" id="backupFile" accept=".json,application/json" />
+        <div class="actions" style="margin-top:14px">
+          <button class="warn" onclick="importBackup()">Import JSON</button>
+          <button class="danger" onclick="resetApp()">Reset Semua Data</button>
+        </div>
+        <p class="hint">Hati-hati: import akan mengganti data lokal saat ini.</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2>Cara Install Jadi App</h2>
+      <ol class="hint">
+        <li>Buka app lewat Chrome/Safari/Edge.</li>
+        <li>Pilih Add to Home Screen / Install App.</li>
+        <li>Untuk offline stabil, buka lewat local server: <b>python3 -m http.server 8000</b>.</li>
+      </ol>
+    </div>
+  </section>
+</main>
+
+<div class="footer">Money Tracker Offline — Budgeting Edition · MVP v3</div>
+<div id="toast" class="toast"></div>
+
+<script>
+const STORAGE_KEY = "money_tracker_budgeting_v2";
+
+const defaultCategories = [
+  {type:"Pemasukan", group:"Income", name:"Gaji Bulanan", aliases:"gaji,salary,upah,gaji bulanan"},
+  {type:"Pemasukan", group:"Income", name:"Bonus", aliases:"bonus,insentif"},
+  {type:"Pemasukan", group:"Income", name:"Penjualan", aliases:"jual,penjualan,sales"},
+  {type:"Pemasukan", group:"Income", name:"Freelance", aliases:"freelance,project,proyek,job,wo"},
+  {type:"Pemasukan", group:"Debt", name:"Bayar Piutang", aliases:"bayar piutang"},
+  {type:"Pemasukan", group:"Debt", name:"Hutang", aliases:"hutang,pinjaman"},
+  {type:"Pengeluaran", group:"Needs", name:"Makan", aliases:"makan,kuliner,food,warung,resto,minum,somay,naspad,bubur"},
+  {type:"Pengeluaran", group:"Needs", name:"Transport", aliases:"transport,ojek,grab,gocar,gojek,taksi,angkot"},
+  {type:"Pengeluaran", group:"Needs", name:"Kendaraan", aliases:"bensin,bbm,pertalite,pertamax,solar,servis,parkir,kendaraan"},
+  {type:"Pengeluaran", group:"Needs", name:"Tagihan", aliases:"tagihan,listrik,air"},
+  {type:"Pengeluaran", group:"Needs", name:"Internet", aliases:"pulsa,data,kuota,internet,wifi"},
+  {type:"Pengeluaran", group:"Needs", name:"Kesehatan", aliases:"obat,dokter,rumah sakit,vitamin"},
+  {type:"Pengeluaran", group:"Needs", name:"Keluarga", aliases:"keluarga,abah,ibu"},
+  {type:"Pengeluaran", group:"Needs", name:"Beras", aliases:"beras"},
+  {type:"Pengeluaran", group:"Needs", name:"Rumah Tangga", aliases:"shampo,pengharum ruangan,minyak,rumah tangga"},
+  {type:"Pengeluaran", group:"Wants", name:"Hiburan", aliases:"hiburan,nongkrong,film,game,nongki"},
+  {type:"Pengeluaran", group:"Wants", name:"Kopi", aliases:"kopi,ngopi,coffee"},
+  {type:"Pengeluaran", group:"Wants", name:"Self Improvement", aliases:"beli buku,beli kelas,buku,kelas,materi,beli materi,beli ppt"},
+  {type:"Pengeluaran", group:"Debt", name:"Piutang", aliases:"piutang"},
+  {type:"Pengeluaran", group:"Debt", name:"Bayar Hutang", aliases:"bayar hutang,cicilan hutang"},
+  {type:"Pengeluaran", group:"Debt", name:"Cicilan Motor", aliases:"cicilan motor,motor"},
+  {type:"Pengeluaran", group:"Saving", name:"Dana Mendesak", aliases:"dana mendesak,mendesak,darurat"},
+  {type:"Pengeluaran", group:"Wants", name:"Sedekah", aliases:"sedekah,ngasih"},
+  {type:"Transfer", group:"Transfer", name:"Pindah Rekening", aliases:"transfer,pindah rekening,pindah"}
+];
+
+const defaultAccounts = [
+  {name:"BCA", startBalance:0},
+  {name:"Dompet", startBalance:0},
+  {name:"Dana", startBalance:0},
+  {name:"Shopeepay", startBalance:0}
+];
+
+function uid(prefix="ID"){
+  return prefix + "-" + new Date().toISOString().replace(/[-:.TZ]/g,"").slice(0,14) + "-" + Math.random().toString(16).slice(2,8).toUpperCase();
+}
+function todayISO(){
+  const d = new Date();
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0,10);
+}
+function addDaysISO(dateISO, days){
+  const d = new Date(dateISO + "T00:00:00");
+  d.setDate(d.getDate() + days);
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0,10);
+}
+function startEnd20to19(){
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const currentDay = now.getDate();
+  let start = new Date(y, m, 20);
+  if (currentDay < 20) start = new Date(y, m-1, 20);
+  let end = new Date(start.getFullYear(), start.getMonth()+1, 19);
+  const fmt = d => {
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0,10);
+  };
+  return {start:fmt(start), end:fmt(end)};
+}
+function rupiah(n){
+  n = Number(n || 0);
+  return "Rp" + n.toLocaleString("id-ID");
+}
+function number(n){ return Number(n || 0); }
+function showToast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(()=>t.classList.remove("show"), 2600);
+}
+
+function loadState(){
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if(raw){
+    try{return JSON.parse(raw)}catch(e){}
+  }
+  const se = startEnd20to19();
+  return {
+    transactions:[],
+    categories: defaultCategories,
+    accounts: defaultAccounts,
+    periods:[{
+      id: uid("PER"),
+      name:"Periode Gajian Aktif",
+      start:se.start,
+      end:se.end,
+      startBalance:0,
+      active:true
+    }],
+    budgetPlans:[]
+  };
+}
+let state = loadState();
+function saveState(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+function getActivePeriod(){
+  return state.periods.find(p=>p.active) || state.periods[0] || null;
+}
+function setActivePeriod(id){
+  state.periods.forEach(p=>p.active = p.id === id);
+  saveState();
+  renderAll();
+}
+function isInPeriod(t, p){
+  return p && t.date >= p.start && t.date <= p.end;
+}
+function getCategory(name){
+  return state.categories.find(c=>norm(c.name)===norm(name)) || null;
+}
+function getGroupByCategory(name){
+  const c = getCategory(name);
+  return c ? c.group : "";
+}
+function norm(s){ return String(s||"").toLowerCase().trim(); }
+
+function parseAmount(text){
+  const cleaned = text.replace(/rp/gi," ");
+  const matches = cleaned.match(/\b\d{1,3}(?:[.,]\d{3})+|\b\d+\b/g);
+  if(!matches) return 0;
+  let best = 0;
+  for(const m of matches){
+    let val = Number(m.replace(/[.,]/g,""));
+    if(val > best) best = val;
+  }
+  return best;
+}
+function parseDateText(text){
+  const lower = norm(text);
+  if(lower.includes("kemarin")) return addDaysISO(todayISO(), -1);
+  if(lower.includes("besok")) return addDaysISO(todayISO(), 1);
+  if(lower.includes("hari ini") || lower.includes("today")) return todayISO();
+
+  const monthMap = {
+    januari:1,jan:1,februari:2,feb:2,maret:3,mar:3,april:4,apr:4,mei:5,juni:6,jun:6,
+    juli:7,jul:7,agustus:8,agu:8,aug:8,september:9,sep:9,oktober:10,okt:10,november:11,nov:11,desember:12,des:12
+  };
+  const m = lower.match(/\b(\d{1,2})\s+([a-z]+)\s+(\d{4})\b/);
+  if(m && monthMap[m[2]]){
+    const d = String(m[1]).padStart(2,"0");
+    const mo = String(monthMap[m[2]]).padStart(2,"0");
+    return `${m[3]}-${mo}-${d}`;
+  }
+  const iso = lower.match(/\b(\d{4})[-/](\d{1,2})[-/](\d{1,2})\b/);
+  if(iso){
+    return `${iso[1]}-${String(iso[2]).padStart(2,"0")}-${String(iso[3]).padStart(2,"0")}`;
+  }
+  return todayISO();
+}
+function detectType(text){
+  const lower = norm(text);
+  if(lower.includes("transfer") || lower.includes("pindah rekening") || lower.includes("pindah")) return "Transfer";
+  if(lower.includes("pemasukan") || lower.includes("income") || lower.includes("masuk")) return "Pemasukan";
+  if(lower.includes("pengeluaran") || lower.includes("expense") || lower.includes("keluar") || lower.includes("bayar")) return "Pengeluaran";
+  return "Pengeluaran";
+}
+function detectAccount(text){
+  const lower = norm(text);
+  const accounts = state.accounts.map(a=>a.name);
+  for(const a of accounts){
+    if(lower.includes(norm(a))) return a;
+  }
+  return accounts[0] || "BCA";
+}
+function detectToAccount(text, fromAcc){
+  const lower = norm(text);
+  const accounts = state.accounts.map(a=>a.name);
+  const pattern = lower.match(/\bke\s+([a-z0-9 ]+)\b/);
+  if(pattern){
+    for(const a of accounts){
+      if(pattern[1].includes(norm(a))) return a;
+    }
+  }
+  for(const a of accounts){
+    if(norm(a)!==norm(fromAcc) && lower.includes(norm(a))) return a;
+  }
+  return "";
+}
+function detectCategory(text, type){
+  const lower = norm(text);
+  const cats = state.categories.filter(c => type==="Transfer" ? c.type==="Transfer" : c.type===type);
+  let best = null, bestScore = 0;
+  for(const c of cats){
+    const aliases = String(c.aliases||"").split(",").map(x=>norm(x)).filter(Boolean);
+    const terms = [norm(c.name), ...aliases];
+    for(const term of terms){
+      if(!term) continue;
+      if(lower.includes(term) && term.length > bestScore){
+        best = c; bestScore = term.length;
+      }
+    }
+  }
+  if(best) return best.name;
+  if(type==="Pemasukan") return cats[0]?.name || "Gaji Bulanan";
+  if(type==="Transfer") return "Pindah Rekening";
+  return cats[0]?.name || "Makan";
+}
+function makeNote(text, amount, category, account){
+  let note = String(text||"");
+  const removeWords = ["hari ini","kemarin","besok","pengeluaran","pemasukan","transfer","income","expense","keluar","masuk","rp"];
+  removeWords.forEach(w => note = note.replace(new RegExp(w, "ig"), " "));
+  note = note.replace(new RegExp(String(amount), "g"), " ");
+  note = note.replace(new RegExp(String(amount).replace(/\B(?=(\d{3})+(?!\d))/g,"."), "g"), " ");
+  note = note.replace(new RegExp(category, "ig"), " ");
+  note = note.replace(new RegExp(account, "ig"), " ");
+  state.accounts.forEach(a=> note = note.replace(new RegExp(a.name, "ig"), " "));
+  note = note.replace(/\s+/g," ").trim();
+  return note;
+}
+function parseTransactionText(text){
+  const type = detectType(text);
+  const amount = parseAmount(text);
+  const date = parseDateText(text);
+  const account = detectAccount(text);
+  const toAccount = type==="Transfer" ? detectToAccount(text, account) : "";
+  const category = detectCategory(text, type);
+  const group = type==="Transfer" ? "Transfer" : getGroupByCategory(category);
+  const note = makeNote(text, amount, category, account);
+
+  return {
+    id: uid("TRX"),
+    timestampInput: new Date().toISOString(),
+    date, type, category, group,
+    amount, account, toAccount,
+    note,
+    originalText:text,
+    status: amount > 0 ? "OK" : "Amount Missing"
+  };
+}
+function addTransaction(tx){
+  if(!tx.id) tx.id = uid("TRX");
+  if(!tx.timestampInput) tx.timestampInput = new Date().toISOString();
+  if(!tx.group) tx.group = tx.type==="Transfer" ? "Transfer" : getGroupByCategory(tx.category);
+  state.transactions.push(tx);
+  saveState();
+  renderAll();
+}
+
+function parseQuickInput(){
+  const text = document.getElementById("quickText").value.trim();
+  if(!text){ showToast("Isi teks transaksi dulu."); return null; }
+  const tx = parseTransactionText(text);
+  document.getElementById("parsePreview").innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <tr><th>Field</th><th>Hasil</th></tr>
+        <tr><td>Tanggal</td><td>${tx.date}</td></tr>
+        <tr><td>Jenis</td><td>${tx.type}</td></tr>
+        <tr><td>Group</td><td>${tx.group}</td></tr>
+        <tr><td>Kategori</td><td>${tx.category}</td></tr>
+        <tr><td>Nominal</td><td>${rupiah(tx.amount)}</td></tr>
+        <tr><td>Rekening</td><td>${tx.account}</td></tr>
+        <tr><td>Rekening Tujuan</td><td>${tx.toAccount || "-"}</td></tr>
+        <tr><td>Catatan</td><td>${tx.note || "-"}</td></tr>
+        <tr><td>Status</td><td>${tx.status}</td></tr>
+      </table>
+    </div>
+  `;
+  return tx;
+}
+function saveQuickInput(){
+  const tx = parseQuickInput();
+  if(!tx) return;
+  if(!tx.amount){ showToast("Nominal belum terbaca. Cek teks transaksi."); return; }
+  addTransaction(tx);
+  document.getElementById("quickText").value = "";
+  document.getElementById("parsePreview").innerHTML = "";
+  showToast("Transaksi berhasil disimpan.");
+}
+function saveManualInput(){
+  const type = document.getElementById("manualType").value;
+  const category = document.getElementById("manualCategory").value;
+  const tx = {
+    id:uid("TRX"),
+    timestampInput:new Date().toISOString(),
+    date:document.getElementById("manualDate").value || todayISO(),
+    type,
+    category,
+    group:type==="Transfer" ? "Transfer" : getGroupByCategory(category),
+    amount:number(document.getElementById("manualAmount").value),
+    account:document.getElementById("manualAccount").value,
+    toAccount:document.getElementById("manualToAccount").value,
+    note:document.getElementById("manualNote").value,
+    originalText:"Manual Input",
+    status:"OK"
+  };
+  if(!tx.amount){ showToast("Nominal wajib diisi."); return; }
+  addTransaction(tx);
+  document.getElementById("manualAmount").value = "";
+  document.getElementById("manualNote").value = "";
+  showToast("Transaksi manual berhasil disimpan.");
+}
+
+function computeAccountBalances(period){
+  const balances = {};
+  state.accounts.forEach(a => balances[a.name] = number(a.startBalance));
+  const startBalance = period ? number(period.startBalance) : 0;
+  if(startBalance && state.accounts[0]) balances[state.accounts[0].name] += startBalance;
+
+  for(const tx of state.transactions){
+    if(period && !isInPeriod(tx, period)) continue;
+    if(tx.type === "Pemasukan") balances[tx.account] = number(balances[tx.account]) + number(tx.amount);
+    else if(tx.type === "Pengeluaran") balances[tx.account] = number(balances[tx.account]) - number(tx.amount);
+    else if(tx.type === "Transfer"){
+      balances[tx.account] = number(balances[tx.account]) - number(tx.amount);
+      if(tx.toAccount) balances[tx.toAccount] = number(balances[tx.toAccount]) + number(tx.amount);
+    }
+  }
+  return balances;
+}
+function actualByCategory(period){
+  const map = {};
+  for(const tx of state.transactions){
+    if(period && !isInPeriod(tx, period)) continue;
+    if(tx.type === "Transfer") continue;
+    const key = tx.category;
+    if(!map[key]) map[key] = 0;
+    map[key] += number(tx.amount);
+  }
+  return map;
+}
+function actualByGroup(period){
+  const groups = {Income:0, Needs:0, Wants:0, Debt:0, Saving:0, Transfer:0};
+  for(const tx of state.transactions){
+    if(period && !isInPeriod(tx, period)) continue;
+    const amt = number(tx.amount);
+    if(tx.type==="Transfer"){ groups.Transfer += amt; continue; }
+    const group = tx.group || getGroupByCategory(tx.category);
+    groups[group] = number(groups[group]) + amt;
+  }
+  return groups;
+}
+function getBudgetPlansForPeriod(periodId){
+  return state.budgetPlans.filter(b=>b.periodId===periodId);
+}
+function budgetStatus(group, budget, actual){
+  budget = number(budget); actual = number(actual);
+  if(!budget && actual) return {text:"No Budget", cls:"warn", pct:100};
+  if(group==="Income"){
+    if(actual >= budget) return {text:"Goal Achieved", cls:"good", pct:budget?Math.min(100, actual/budget*100):100};
+    return {text:"On Track", cls:"warn", pct:budget?Math.min(100, actual/budget*100):0};
+  }
+  if(actual > budget) return {text:"Over Budget", cls:"bad", pct:budget?Math.min(150, actual/budget*100):100};
+  if(actual === budget && budget > 0) return {text:"On Budget", cls:"warn", pct:100};
+  return {text:"Under Budget", cls:"good", pct:budget?Math.min(100, actual/budget*100):0};
+}
+
+function percentText(actual, budget){
+  actual = number(actual); budget = number(budget);
+  if(!budget) return actual ? "No budget" : "0%";
+  return Math.round((actual / budget) * 100) + "%";
+}
+function sumBudgetByGroup(plans){
+  const out = {Income:0, Needs:0, Wants:0, Debt:0, Saving:0};
+  plans.forEach(p => out[p.group] = number(out[p.group]) + number(p.amount));
+  return out;
+}
+function safePct(actual, budget, cap=150){
+  if(!budget) return actual ? 100 : 0;
+  return Math.max(0, Math.min(cap, (actual / budget) * 100));
+}
+function pieColor(group){
+  return {
+    Income:"#16a34a",
+    Needs:"#2563eb",
+    Wants:"#f59e0b",
+    Debt:"#db2777",
+    Saving:"#059669",
+    Transfer:"#0284c7"
+  }[group] || "#111827";
+}
+function donutSVG(items){
+  const total = items.reduce((s,i)=>s+number(i.value),0);
+  if(!total){
+    return `<div class="empty">Belum ada actual untuk divisualkan.</div>`;
+  }
+  let offset = 25;
+  const circles = items.filter(i=>number(i.value)>0).map(i=>{
+    const pct = number(i.value)/total*100;
+    const el = `<circle r="36" cx="50" cy="50" fill="transparent" stroke="${pieColor(i.name)}" stroke-width="15" stroke-dasharray="${pct} ${100-pct}" stroke-dashoffset="${offset}" />`;
+    offset -= pct;
+    return el;
+  }).join("");
+  const legend = items.filter(i=>number(i.value)>0).map(i=>`
+    <div class="legend-item"><span class="dot" style="background:${pieColor(i.name)}"></span><span><b>${i.name}</b> · ${percentText(i.value,total)} · ${rupiah(i.value)}</span></div>
+  `).join("");
+  return `<div class="donut-wrap">
+    <svg width="190" height="190" viewBox="0 0 100 100" role="img" aria-label="Actual spending composition">
+      <circle r="36" cx="50" cy="50" fill="transparent" stroke="#e5e7eb" stroke-width="15"></circle>
+      ${circles}
+      <text x="50" y="47" text-anchor="middle" font-size="7" font-weight="800" fill="#111827">Actual</text>
+      <text x="50" y="57" text-anchor="middle" font-size="7" fill="#6b7280">${rupiah(total)}</text>
+    </svg>
+    <div class="legend">${legend}</div>
+  </div>`;
+}
+function visualSummaryTable(group, plans, actualCat){
+  const rows = plans.filter(p=>p.group===group).map(p=>{
+    const actual = number(actualCat[p.category]);
+    const st = budgetStatus(p.group, p.amount, actual);
+    const diff = group==="Income" ? actual-number(p.amount) : number(p.amount)-actual;
+    return `<tr>
+      <td>${p.category}</td>
+      <td class="right">${rupiah(p.amount)}</td>
+      <td class="right">${rupiah(actual)}</td>
+      <td class="right">${percentText(actual, p.amount)}</td>
+      <td class="right">${rupiah(diff)}</td>
+      <td class="status-${st.cls}">${st.text}</td>
+    </tr>`;
+  }).join("");
+  if(!rows) return `<div class="empty">Belum ada budget ${group}.</div>`;
+  return `<table>
+    <tr><th>Category</th><th class="right">Expected</th><th class="right">Actual</th><th class="right">%</th><th class="right">Selisih</th><th>Status</th></tr>
+    ${rows}
+  </table>`;
+}
+function renderVisualDashboard(period, groups, plans){
+  const budgetGroup = sumBudgetByGroup(plans);
+  const actualCat = actualByCategory(period);
+  const expenseActual = number(groups.Needs)+number(groups.Wants)+number(groups.Debt)+number(groups.Saving);
+  const expenseBudget = number(budgetGroup.Needs)+number(budgetGroup.Wants)+number(budgetGroup.Debt)+number(budgetGroup.Saving);
+
+  document.getElementById("metricIncomePct").textContent = `${percentText(groups.Income, budgetGroup.Income)} dari target income`;
+  document.getElementById("metricExpensePct").textContent = `${percentText(expenseActual, expenseBudget)} dari budget expense`;
+
+  const statusGroups = ["Income","Needs","Wants","Debt"];
+  document.getElementById("visualStatusOverview").innerHTML = statusGroups.map(g=>{
+    const st = budgetStatus(g, budgetGroup[g], groups[g]);
+    const pct = safePct(groups[g], budgetGroup[g], 150);
+    return `<div class="status-card">
+      <div class="top"><b>${g}</b><span class="status-${st.cls}">${st.text}</span></div>
+      <div class="big">${percentText(groups[g], budgetGroup[g])}</div>
+      <div class="progress"><div class="bar ${st.cls}" style="width:${Math.min(100,pct)}%"></div></div>
+      <div class="mini" style="margin-top:7px">${rupiah(groups[g])} / ${rupiah(budgetGroup[g])}</div>
+    </div>`;
+  }).join("");
+
+  document.getElementById("visualDonut").innerHTML = `<div class="chartbox">${donutSVG([
+    {name:"Needs", value:groups.Needs},
+    {name:"Wants", value:groups.Wants},
+    {name:"Debt", value:groups.Debt},
+    {name:"Saving", value:groups.Saving}
+  ])}</div>`;
+
+  const maxVal = Math.max(1, ...["Income","Needs","Wants","Debt","Saving"].flatMap(g=>[number(budgetGroup[g]), number(groups[g])]));
+  document.getElementById("visualActualVsBudgetBars").innerHTML = ["Income","Needs","Wants","Debt","Saving"].map(g=>{
+    const expectedPct = number(budgetGroup[g]) / maxVal * 100;
+    const actualPct = number(groups[g]) / maxVal * 100;
+    return `<div style="margin-bottom:15px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <b>${g}</b><span class="mini">${rupiah(groups[g])} actual · ${rupiah(budgetGroup[g])} expected</span>
+      </div>
+      <div class="mini-bar-row">
+        <div class="mini-bar-label">Expected</div>
+        <div class="mini-bar-track"><div class="mini-bar-fill" style="width:${expectedPct}%;background:${pieColor(g)};opacity:.35"></div></div>
+        <div class="mini-bar-value">${percentText(budgetGroup[g], maxVal)}</div>
+      </div>
+      <div class="mini-bar-row">
+        <div class="mini-bar-label">Actual</div>
+        <div class="mini-bar-track"><div class="mini-bar-fill actual" style="width:${actualPct}%;background:${pieColor(g)}"></div></div>
+        <div class="mini-bar-value">${percentText(groups[g], budgetGroup[g])}</div>
+      </div>
+    </div>`;
+  }).join("");
+
+  const income = number(groups.Income);
+  const needs = number(groups.Needs);
+  const wants = number(groups.Wants);
+  const debt = number(groups.Debt);
+  const saving = number(groups.Saving);
+  const totalLeft = number(period?.startBalance) + income - needs - wants - debt - saving;
+  document.getElementById("visualCashFlow").innerHTML = `<table>
+    <tr><th>Item</th><th class="right">Expected</th><th class="right">Actual</th></tr>
+    <tr><td>Start Balance</td><td class="right">${rupiah(period?.startBalance || 0)}</td><td class="right">${rupiah(period?.startBalance || 0)}</td></tr>
+    <tr><td>Income This Period</td><td class="right">${rupiah(budgetGroup.Income)}</td><td class="right">${rupiah(income)}</td></tr>
+    <tr><td>Needs</td><td class="right">${rupiah(budgetGroup.Needs)}</td><td class="right">${rupiah(needs)}</td></tr>
+    <tr><td>Wants</td><td class="right">${rupiah(budgetGroup.Wants)}</td><td class="right">${rupiah(wants)}</td></tr>
+    <tr><td>Debt</td><td class="right">${rupiah(budgetGroup.Debt)}</td><td class="right">${rupiah(debt)}</td></tr>
+    <tr><td>Saving</td><td class="right">${rupiah(budgetGroup.Saving)}</td><td class="right">${rupiah(saving)}</td></tr>
+    <tr><td><b>Total Leftover</b></td><td class="right"><b>${rupiah(number(period?.startBalance)+number(budgetGroup.Income)-number(budgetGroup.Needs)-number(budgetGroup.Wants)-number(budgetGroup.Debt)-number(budgetGroup.Saving))}</b></td><td class="right"><b>${rupiah(totalLeft)}</b></td></tr>
+  </table>`;
+
+  document.getElementById("visualNeeds").innerHTML = visualSummaryTable("Needs", plans, actualCat);
+  document.getElementById("visualWants").innerHTML = visualSummaryTable("Wants", plans, actualCat);
+  document.getElementById("visualDebt").innerHTML = visualSummaryTable("Debt", plans, actualCat);
+  document.getElementById("visualIncome").innerHTML = visualSummaryTable("Income", plans, actualCat);
+}
+
+function renderDashboard(){
+  const period = getActivePeriod();
+  const groups = actualByGroup(period);
+  const income = number(groups.Income);
+  const expense = number(groups.Needs)+number(groups.Wants)+number(groups.Debt)+number(groups.Saving);
+  const net = income - expense;
+  const balance = number(period?.startBalance) + net;
+  document.getElementById("metricIncome").textContent = rupiah(income);
+  document.getElementById("metricExpense").textContent = rupiah(expense);
+  document.getElementById("metricNet").textContent = rupiah(net);
+  document.getElementById("metricBalance").textContent = rupiah(balance);
+
+  const plans = getBudgetPlansForPeriod(period?.id);
+  renderVisualDashboard(period, groups, plans);
+  const budgetByGroup = {};
+  plans.forEach(p => budgetByGroup[p.group] = number(budgetByGroup[p.group]) + number(p.amount));
+  const rows = ["Income","Needs","Wants","Debt","Saving"].map(g=>{
+    const actual = number(groups[g]);
+    const budget = number(budgetByGroup[g]);
+    const st = budgetStatus(g,budget,actual);
+    const sisa = g==="Income" ? actual-budget : budget-actual;
+    return `<tr>
+      <td><span class="pill ${g.toLowerCase()}">${g}</span></td>
+      <td class="right">${rupiah(budget)}</td>
+      <td class="right">${rupiah(actual)}</td>
+      <td class="right">${rupiah(sisa)}</td>
+      <td class="status-${st.cls}">${st.text}</td>
+    </tr>`;
+  }).join("");
+  document.getElementById("groupSummary").innerHTML = `<table><tr><th>Group</th><th class="right">Expected</th><th class="right">Actual</th><th class="right">Selisih</th><th>Status</th></tr>${rows}</table>`;
+
+  const balances = computeAccountBalances(period);
+  document.getElementById("accountSummary").innerHTML = `<table>
+    <tr><th>Rekening</th><th class="right">Saldo Periode</th></tr>
+    ${Object.entries(balances).map(([k,v])=>`<tr><td>${k}</td><td class="right">${rupiah(v)}</td></tr>`).join("")}
+  </table>`;
+
+  const actualCat = actualByCategory(period);
+  const progressRows = plans.map(p=>{
+    const actual = number(actualCat[p.category]);
+    const st = budgetStatus(p.group, p.amount, actual);
+    return {...p, actual, st};
+  }).sort((a,b)=> (b.actual/Math.max(1,b.amount)) - (a.actual/Math.max(1,a.amount))).slice(0,10);
+
+  if(!progressRows.length){
+    document.getElementById("topBudgetProgress").innerHTML = `<div class="empty">Belum ada budget plan. Buka tab Budgeting untuk membuat budget.</div>`;
+  } else {
+    document.getElementById("topBudgetProgress").innerHTML = progressRows.map(p=>`
+      <div style="margin:12px 0">
+        <div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:6px;flex-wrap:wrap">
+          <b>${p.category}</b>
+          <span class="mini">${p.group} · ${rupiah(p.actual)} / ${rupiah(p.amount)} · <span class="status-${p.st.cls}">${p.st.text}</span></span>
+        </div>
+        <div class="progress"><div class="bar ${p.st.cls}" style="width:${Math.min(100,p.st.pct)}%"></div></div>
+      </div>
+    `).join("");
+  }
+}
+function renderPeriodOptions(){
+  const active = getActivePeriod();
+  const opts = state.periods.map(p=>`<option value="${p.id}" ${p.active?"selected":""}>${p.name} · ${p.start}–${p.end}</option>`).join("");
+  document.getElementById("activePeriodSelect").innerHTML = opts;
+  document.getElementById("budgetPeriodSelect").innerHTML = opts;
+  document.getElementById("activePeriodSelect").onchange = e => setActivePeriod(e.target.value);
+}
+function renderBudgeting(){
+  const period = getActivePeriod();
+  const actualCat = actualByCategory(period);
+  const plans = getBudgetPlansForPeriod(period?.id);
+
+  if(!plans.length){
+    document.getElementById("budgetTable").innerHTML = `<div class="empty">Belum ada budget plan untuk periode aktif.</div>`;
+  } else {
+    const rows = plans.map(p=>{
+      const actual = number(actualCat[p.category]);
+      const st = budgetStatus(p.group, p.amount, actual);
+      const sisa = p.group==="Income" ? actual-number(p.amount) : number(p.amount)-actual;
+      return `<tr>
+        <td><span class="pill ${p.group.toLowerCase()}">${p.group}</span></td>
+        <td>${p.category}</td>
+        <td class="right">${rupiah(p.amount)}</td>
+        <td class="right">${rupiah(actual)}</td>
+        <td class="right">${rupiah(sisa)}</td>
+        <td class="status-${st.cls}">${st.text}</td>
+        <td><button class="danger" onclick="deleteBudgetPlan('${p.id}')">Hapus</button></td>
+      </tr>`;
+    }).join("");
+    document.getElementById("budgetTable").innerHTML = `<table>
+      <tr><th>Group</th><th>Kategori</th><th class="right">Expected</th><th class="right">Actual</th><th class="right">Selisih</th><th>Status</th><th>Aksi</th></tr>${rows}
+    </table>`;
+  }
+
+  document.getElementById("periodTable").innerHTML = `<table>
+    <tr><th>Nama</th><th>Mulai</th><th>Selesai</th><th class="right">Start Balance</th><th>Status</th><th>Aksi</th></tr>
+    ${state.periods.map(p=>`
+      <tr>
+        <td>${p.name}</td><td>${p.start}</td><td>${p.end}</td><td class="right">${rupiah(p.startBalance)}</td><td>${p.active?"Aktif":"-"}</td>
+        <td><button class="soft" onclick="setActivePeriod('${p.id}')">Set Aktif</button> <button class="danger" onclick="deletePeriod('${p.id}')">Hapus</button></td>
+      </tr>
+    `).join("")}
+  </table>`;
+}
+function savePeriod(){
+  const p = {
+    id:uid("PER"),
+    name:document.getElementById("periodName").value || "Periode Baru",
+    start:document.getElementById("periodStart").value || todayISO(),
+    end:document.getElementById("periodEnd").value || addDaysISO(todayISO(), 30),
+    startBalance:number(document.getElementById("periodStartBalance").value),
+    active:document.getElementById("periodIsActive").value==="Y"
+  };
+  if(p.active) state.periods.forEach(x=>x.active=false);
+  state.periods.push(p);
+  saveState();
+  renderAll();
+  showToast("Periode berhasil disimpan.");
+}
+function fillPeriod20to19(){
+  const se = startEnd20to19();
+  document.getElementById("periodStart").value = se.start;
+  document.getElementById("periodEnd").value = se.end;
+  document.getElementById("periodName").value = "Gajian " + se.start + " - " + se.end;
+}
+function deletePeriod(id){
+  if(!confirm("Hapus periode ini? Budget plan periode ini juga akan tetap tersimpan tapi tidak aktif.")) return;
+  state.periods = state.periods.filter(p=>p.id!==id);
+  if(!state.periods.some(p=>p.active) && state.periods[0]) state.periods[0].active = true;
+  saveState(); renderAll();
+}
+function saveBudgetPlan(){
+  const periodId = document.getElementById("budgetPeriodSelect").value;
+  const group = document.getElementById("budgetGroup").value;
+  const category = document.getElementById("budgetCategory").value;
+  const amount = number(document.getElementById("budgetAmount").value);
+  if(!periodId || !category || !amount){ showToast("Periode, kategori, dan nominal budget wajib diisi."); return; }
+  const existing = state.budgetPlans.find(b=>b.periodId===periodId && norm(b.category)===norm(category));
+  if(existing){
+    existing.group = group; existing.amount = amount;
+  } else {
+    state.budgetPlans.push({id:uid("BUD"), periodId, group, category, amount});
+  }
+  saveState(); renderAll();
+  document.getElementById("budgetAmount").value = "";
+  showToast("Budget plan berhasil disimpan.");
+}
+function deleteBudgetPlan(id){
+  state.budgetPlans = state.budgetPlans.filter(b=>b.id!==id);
+  saveState(); renderAll();
+}
+function seedBudgetFromCategories(){
+  const period = getActivePeriod();
+  if(!period){ showToast("Buat periode dulu."); return; }
+  let added = 0;
+  state.categories.filter(c=>c.group!=="Transfer").forEach(c=>{
+    const exists = state.budgetPlans.some(b=>b.periodId===period.id && norm(b.category)===norm(c.name));
+    if(!exists){
+      state.budgetPlans.push({id:uid("BUD"), periodId:period.id, group:c.group, category:c.name, amount:0});
+      added++;
+    }
+  });
+  saveState(); renderAll();
+  showToast(`Template budget dibuat: ${added} kategori.`);
+}
+function clearBudgetPlansForActivePeriod(){
+  const period = getActivePeriod();
+  if(!period) return;
+  if(!confirm("Hapus semua budget plan pada periode aktif?")) return;
+  state.budgetPlans = state.budgetPlans.filter(b=>b.periodId!==period.id);
+  saveState(); renderAll();
+}
+
+function renderTransactions(){
+  const period = getActivePeriod();
+  const ft = document.getElementById("filterType")?.value || "";
+  const fg = document.getElementById("filterGroup")?.value || "";
+  const fa = document.getElementById("filterAccount")?.value || "";
+  let txs = [...state.transactions].sort((a,b)=> b.date.localeCompare(a.date) || b.timestampInput.localeCompare(a.timestampInput));
+  txs = txs.filter(t => !period || isInPeriod(t, period));
+  if(ft) txs = txs.filter(t=>t.type===ft);
+  if(fg) txs = txs.filter(t=>(t.group||getGroupByCategory(t.category))===fg);
+  if(fa) txs = txs.filter(t=>t.account===fa || t.toAccount===fa);
+
+  if(!txs.length){
+    document.getElementById("transactionsTable").innerHTML = `<div class="empty">Belum ada transaksi sesuai filter.</div>`;
+    return;
+  }
+  document.getElementById("transactionsTable").innerHTML = `<table>
+    <tr><th>Tanggal</th><th>Jenis</th><th>Group</th><th>Kategori</th><th class="right">Nominal</th><th>Rekening</th><th>Catatan</th><th>Aksi</th></tr>
+    ${txs.map(t=>`<tr>
+      <td>${t.date}</td>
+      <td><span class="pill ${t.type==='Pemasukan'?'income':t.type==='Transfer'?'transfer':'expense'}">${t.type}</span></td>
+      <td>${t.group||getGroupByCategory(t.category)}</td>
+      <td>${t.category}</td>
+      <td class="right">${rupiah(t.amount)}</td>
+      <td>${t.account}${t.toAccount ? " → " + t.toAccount : ""}</td>
+      <td>${t.note || "-"}</td>
+      <td><button class="danger" onclick="deleteTransaction('${t.id}')">Hapus</button></td>
+    </tr>`).join("")}
+  </table>`;
+}
+function deleteTransaction(id){
+  if(!confirm("Hapus transaksi ini?")) return;
+  state.transactions = state.transactions.filter(t=>t.id!==id);
+  saveState(); renderAll();
+}
+
+function refreshAccountOptions(){
+  const accOpts = state.accounts.map(a=>`<option>${a.name}</option>`).join("");
+  ["manualAccount","manualToAccount"].forEach(id=>document.getElementById(id).innerHTML = accOpts);
+  document.getElementById("filterAccount").innerHTML = `<option value="">Semua Rekening</option>` + accOpts;
+}
+function refreshManualCategoryOptions(){
+  const type = document.getElementById("manualType").value;
+  const cats = state.categories.filter(c => type==="Transfer" ? c.type==="Transfer" : c.type===type);
+  document.getElementById("manualCategory").innerHTML = cats.map(c=>`<option>${c.name}</option>`).join("");
+}
+function refreshBudgetCategoryOptions(){
+  const group = document.getElementById("budgetGroup").value;
+  const cats = state.categories.filter(c=>c.group===group);
+  document.getElementById("budgetCategory").innerHTML = cats.map(c=>`<option>${c.name}</option>`).join("");
+}
+function renderMasters(){
+  document.getElementById("categoriesTable").innerHTML = `<table>
+    <tr><th>Jenis</th><th>Group</th><th>Kategori</th><th>Alias</th><th>Aksi</th></tr>
+    ${state.categories.map((c,i)=>`<tr><td>${c.type}</td><td>${c.group}</td><td>${c.name}</td><td>${c.aliases}</td><td><button class="danger" onclick="deleteCategory(${i})">Hapus</button></td></tr>`).join("")}
+  </table>`;
+  document.getElementById("accountsTable").innerHTML = `<table>
+    <tr><th>Rekening</th><th class="right">Saldo Awal</th><th>Aksi</th></tr>
+    ${state.accounts.map((a,i)=>`<tr><td>${a.name}</td><td class="right">${rupiah(a.startBalance)}</td><td><button class="danger" onclick="deleteAccount(${i})">Hapus</button></td></tr>`).join("")}
+  </table>`;
+}
+function saveCategory(){
+  const name = document.getElementById("catName").value.trim();
+  if(!name){ showToast("Nama kategori wajib diisi."); return; }
+  const c = {
+    type:document.getElementById("catType").value,
+    group:document.getElementById("catGroup").value,
+    name,
+    aliases:document.getElementById("catAliases").value.trim()
+  };
+  const existing = state.categories.find(x=>norm(x.name)===norm(name));
+  if(existing) Object.assign(existing,c); else state.categories.push(c);
+  saveState(); renderAll();
+  document.getElementById("catName").value = "";
+  document.getElementById("catAliases").value = "";
+  showToast("Kategori berhasil disimpan.");
+}
+function deleteCategory(i){
+  if(!confirm("Hapus kategori ini?")) return;
+  state.categories.splice(i,1); saveState(); renderAll();
+}
+function saveAccount(){
+  const name = document.getElementById("accountName").value.trim();
+  if(!name){ showToast("Nama rekening wajib diisi."); return; }
+  const existing = state.accounts.find(a=>norm(a.name)===norm(name));
+  if(existing) existing.startBalance = number(document.getElementById("accountStart").value);
+  else state.accounts.push({name, startBalance:number(document.getElementById("accountStart").value)});
+  saveState(); renderAll();
+  document.getElementById("accountName").value = "";
+  document.getElementById("accountStart").value = "";
+}
+function deleteAccount(i){
+  if(!confirm("Hapus rekening ini?")) return;
+  state.accounts.splice(i,1); saveState(); renderAll();
+}
+
+function csvEscape(v){ return `"${String(v??"").replace(/"/g,'""')}"`; }
+function download(filename, content, type="text/plain"){
+  const blob = new Blob([content], {type});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url), 500);
+}
+function exportTransactionsCSV(){
+  const header = ["ID","Timestamp_Input","Tanggal_Transaksi","Jenis","Group","Kategori","Nominal","Rekening","Rekening_Tujuan","Catatan","Teks_Asli","Status"];
+  const rows = state.transactions.map(t=>[t.id,t.timestampInput,t.date,t.type,t.group,t.category,t.amount,t.account,t.toAccount,t.note,t.originalText,t.status]);
+  download("money_transactions.csv", [header,...rows].map(r=>r.map(csvEscape).join(",")).join("\n"), "text/csv");
+}
+function exportBudgetCSV(){
+  const header = ["Period_ID","Group","Kategori","Budget"];
+  const rows = state.budgetPlans.map(b=>[b.periodId,b.group,b.category,b.amount]);
+  download("money_budget_plans.csv", [header,...rows].map(r=>r.map(csvEscape).join(",")).join("\n"), "text/csv");
+}
+function downloadBackup(){
+  download("money_tracker_backup.json", JSON.stringify(state,null,2), "application/json");
+}
+function importBackup(){
+  const file = document.getElementById("backupFile").files[0];
+  if(!file){ showToast("Pilih file JSON dulu."); return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const data = JSON.parse(reader.result);
+      if(!data.transactions || !data.categories) throw new Error("Format tidak cocok.");
+      state = data;
+      saveState(); renderAll();
+      showToast("Backup berhasil di-import.");
+    }catch(e){ showToast("Import gagal: " + e.message); }
+  };
+  reader.readAsText(file);
+}
+function resetApp(){
+  if(!confirm("Reset semua data aplikasi ini?")) return;
+  localStorage.removeItem(STORAGE_KEY);
+  state = loadState();
+  saveState();
+  renderAll();
+  showToast("Data berhasil direset.");
+}
+
+function renderAll(){
+  refreshAccountOptions();
+  refreshManualCategoryOptions();
+  refreshBudgetCategoryOptions();
+  renderPeriodOptions();
+  renderDashboard();
+  renderBudgeting();
+  renderTransactions();
+  renderMasters();
+}
+
+document.querySelectorAll(".navBtn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".navBtn").forEach(b=>b.classList.remove("primary"));
+    btn.classList.add("primary");
+    document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+    document.getElementById(btn.dataset.tab).classList.add("active");
+    renderAll();
+  });
+});
+
+document.getElementById("manualDate").value = todayISO();
+fillPeriod20to19();
+renderAll();
+
+if("serviceWorker" in navigator){
+  window.addEventListener("load", ()=>{
+    navigator.serviceWorker.register("./sw.js").catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
