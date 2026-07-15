@@ -4,10 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#111827" />
-  <title>Money Tracker Cloud Sync — v6.3 Debt Inside Needs</title>
+  <title>Money Tracker Cloud Sync — v6.4 Custom Percentage</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <script src="./firebase-config.js?v=20260715-63"></script>
+  <script src="./firebase-config.js?v=20260715-64"></script>
   <style>
     :root{
       --bg:#f4f5f7;
@@ -218,6 +218,76 @@
     .money-plan-box .plan-value{font-size:22px;font-weight:950;margin:7px 0 5px}
     .money-plan-box .plan-sub{font-size:12px;color:var(--muted)}
     .money-plan-percent-total{font-weight:950}
+
+    .simple-allocation-control{
+      margin-top:14px;
+      border:1px solid var(--border);
+      border-radius:18px;
+      padding:14px;
+      background:rgba(255,255,255,.88);
+      display:grid;
+      grid-template-columns:minmax(180px,1fr) minmax(320px,1.5fr) auto;
+      gap:14px;
+      align-items:center;
+    }
+    .allocation-inputs{
+      display:grid;
+      grid-template-columns:repeat(3,minmax(90px,1fr));
+      gap:10px;
+    }
+    .allocation-inputs label{
+      display:block;
+      font-size:11px;
+      font-weight:900;
+      color:var(--muted);
+    }
+    .percent-input-wrap{
+      display:flex;
+      align-items:center;
+      gap:6px;
+      margin-top:5px;
+      padding:0 10px;
+      border:1px solid var(--border);
+      border-radius:12px;
+      background:#fff;
+    }
+    .percent-input-wrap input{
+      width:100%;
+      border:0;
+      padding:10px 0;
+      font-size:16px;
+      font-weight:900;
+      background:transparent;
+      outline:none;
+    }
+    .percent-input-wrap span{
+      font-weight:900;
+      color:var(--muted);
+    }
+    .allocation-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:flex-end;
+    }
+    @media(max-width:1000px){
+      .simple-allocation-control{
+        grid-template-columns:1fr;
+      }
+      .allocation-actions{
+        justify-content:flex-start;
+      }
+    }
+    @media(max-width:560px){
+      .allocation-inputs{
+        grid-template-columns:1fr;
+      }
+      .allocation-actions button{
+        width:100%;
+      }
+    }
+
     .expected-source-grid{
       display:grid;
       grid-template-columns:repeat(4,minmax(0,1fr));
@@ -305,7 +375,7 @@
       <div class="logo">₿</div>
       <div>
         <h1>Money Tracker Cloud Sync</h1>
-        <div class="subtitle">Expected 50/30/20 + Debt Motor · Sinkron MacBook & iPhone</div>
+        <div class="subtitle">Expected Money Plan Fleksibel + Debt Motor · Sinkron MacBook & iPhone</div>
       </div>
     </div>
     <div id="headerCloudStatus" class="cloud-badge">Cloud belum diatur</div>
@@ -347,10 +417,10 @@
       <div class="money-plan-header">
         <div>
           <div class="mini">Money Plan otomatis periode aktif</div>
-          <h2 style="margin:4px 0 6px">Expected 50 / 30 / 20</h2>
+          <h2 style="margin:4px 0 6px">Expected Money Plan</h2>
           <div class="hint">
             Patokan berasal dari Expected Gaji Bulanan + Expected Bonus + Expected Freelance.
-            Debt motor mengambil bagian dari alokasi Needs 50%, sedangkan Penjualan tetap menjadi dana darurat.
+            Persentase Needs, Wants, dan Saving dapat diubah dengan mudah di bawah ini.
           </div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
@@ -360,6 +430,46 @@
       </div>
 
       <div id="autoMoneyPlanNotice" class="notice" style="margin-top:14px"></div>
+
+
+      <div class="simple-allocation-control">
+        <div>
+          <b>Atur Persentase Money Plan</b>
+          <div class="mini">Ubah tiga angka ini saja. Totalnya wajib 100%.</div>
+        </div>
+
+        <div class="allocation-inputs">
+          <label>
+            <span>Needs + Debt</span>
+            <div class="percent-input-wrap">
+              <input id="allocationNeeds" type="number" min="0" max="100" step="1" inputmode="decimal" />
+              <span>%</span>
+            </div>
+          </label>
+
+          <label>
+            <span>Wants</span>
+            <div class="percent-input-wrap">
+              <input id="allocationWants" type="number" min="0" max="100" step="1" inputmode="decimal" />
+              <span>%</span>
+            </div>
+          </label>
+
+          <label>
+            <span>Saving</span>
+            <div class="percent-input-wrap">
+              <input id="allocationSaving" type="number" min="0" max="100" step="1" inputmode="decimal" />
+              <span>%</span>
+            </div>
+          </label>
+        </div>
+
+        <div class="allocation-actions">
+          <span id="allocationTotalBadge" class="pill transfer">Total 100%</span>
+          <button class="primary" onclick="saveAllocationPercentages()">Simpan Persentase</button>
+          <button class="soft" onclick="resetAllocationPercentages()">Reset 50/30/20</button>
+        </div>
+      </div>
 
       <div class="expected-source-grid" id="expectedIncomeSources"></div>
 
@@ -706,7 +816,7 @@
     <div class="card cloud-hero">
       <div class="section-title" style="margin-top:0">
         <div>
-          <div class="mini" style="color:rgba(255,255,255,.65)">Money Tracker v6.3</div>
+          <div class="mini" style="color:rgba(255,255,255,.65)">Money Tracker v6.4</div>
           <h2 style="margin:4px 0">Cloud Sync MacBook ↔ iPhone</h2>
           <div class="hint">Login dengan akun yang sama di dua device. Transaksi, saldo rekening, kategori, periode, dan budgeting akan ikut pindah.</div>
         </div>
@@ -799,7 +909,7 @@
   </section>
 </main>
 
-<div class="footer">Money Tracker Cloud Sync · Firebase Edition · v6.3 · Debt di Dalam Needs 50%</div>
+<div class="footer">Money Tracker Cloud Sync · Firebase Edition · v6.4 · Persentase Fleksibel</div>
 <div id="toast" class="toast"></div>
 
 <script>
@@ -861,9 +971,38 @@ function normalizeState(data){
   }];
   clean.budgetPlans = Array.isArray(clean.budgetPlans) ? clean.budgetPlans : [];
   clean.moneyPlans = Array.isArray(clean.moneyPlans) ? clean.moneyPlans : [];
+
+  const allocation = clean.allocationPercentages && typeof clean.allocationPercentages === "object"
+    ? clean.allocationPercentages
+    : {};
+
+  clean.allocationPercentages = {
+    needs:Number.isFinite(Number(allocation.needs)) ? Number(allocation.needs) : 50,
+    wants:Number.isFinite(Number(allocation.wants)) ? Number(allocation.wants) : 30,
+    saving:Number.isFinite(Number(allocation.saving)) ? Number(allocation.saving) : 20
+  };
+
+  const allocationTotal =
+    clean.allocationPercentages.needs +
+    clean.allocationPercentages.wants +
+    clean.allocationPercentages.saving;
+
+  if(
+    clean.allocationPercentages.needs < 0 ||
+    clean.allocationPercentages.wants < 0 ||
+    clean.allocationPercentages.saving < 0 ||
+    Math.abs(allocationTotal - 100) > 0.01
+  ){
+    clean.allocationPercentages = {
+      needs:50,
+      wants:30,
+      saving:20
+    };
+  }
+
   clean.sync = clean.sync && typeof clean.sync === "object" ? clean.sync : {};
   clean.sync.deletedTransactionIds = Array.isArray(clean.sync.deletedTransactionIds) ? clean.sync.deletedTransactionIds : [];
-  clean.sync.schemaVersion = 6;
+  clean.sync.schemaVersion = 7;
   return clean;
 }
 
@@ -926,7 +1065,12 @@ function loadState(){
       active:true
     }],
     budgetPlans:[],
-    moneyPlans:[]
+    moneyPlans:[],
+    allocationPercentages:{
+      needs:50,
+      wants:30,
+      saving:20
+    }
   };
 }
 let state = normalizeState(loadState());
@@ -1863,11 +2007,95 @@ function emergencyFundIncome(period){
   return number(actualCategory["Penjualan"]);
 }
 
+
+function getAllocationPercentages(){
+  const allocation = state.allocationPercentages || {
+    needs:50,
+    wants:30,
+    saving:20
+  };
+
+  return {
+    needs:number(allocation.needs),
+    wants:number(allocation.wants),
+    saving:number(allocation.saving)
+  };
+}
+
+function renderAllocationPercentageControls(){
+  const allocation = getAllocationPercentages();
+  const needsInput = document.getElementById("allocationNeeds");
+  const wantsInput = document.getElementById("allocationWants");
+  const savingInput = document.getElementById("allocationSaving");
+  const totalBadge = document.getElementById("allocationTotalBadge");
+
+  if(!needsInput || !wantsInput || !savingInput || !totalBadge) return;
+
+  if(document.activeElement !== needsInput){
+    needsInput.value = allocation.needs;
+  }
+  if(document.activeElement !== wantsInput){
+    wantsInput.value = allocation.wants;
+  }
+  if(document.activeElement !== savingInput){
+    savingInput.value = allocation.saving;
+  }
+
+  const total = allocation.needs + allocation.wants + allocation.saving;
+  totalBadge.textContent = `Total ${total}%`;
+  totalBadge.className = Math.abs(total - 100) <= 0.01
+    ? "pill income"
+    : "pill expense";
+}
+
+function saveAllocationPercentages(){
+  const needs = number(document.getElementById("allocationNeeds")?.value);
+  const wants = number(document.getElementById("allocationWants")?.value);
+  const saving = number(document.getElementById("allocationSaving")?.value);
+  const total = needs + wants + saving;
+
+  if(needs < 0 || wants < 0 || saving < 0){
+    showToast("Persentase tidak boleh minus.");
+    return;
+  }
+
+  if(Math.abs(total - 100) > 0.01){
+    showToast(`Total harus 100%. Sekarang totalnya ${total}%.`);
+    return;
+  }
+
+  state.allocationPercentages = {
+    needs,
+    wants,
+    saving
+  };
+
+  saveState();
+  renderAll();
+  showToast("Persentase Money Plan sudah disimpan.");
+}
+
+function resetAllocationPercentages(){
+  state.allocationPercentages = {
+    needs:50,
+    wants:30,
+    saving:20
+  };
+
+  saveState();
+  renderAll();
+  showToast("Persentase kembali ke 50/30/20.");
+}
+
 function automaticMoneyPlanTargets(expectedAmount,debtAmount=0){
   const expected = Math.max(0,number(expectedAmount));
   const debt = Math.max(0,number(debtAmount));
-  const needsAndDebt = expected * 0.50;
+  const allocation = getAllocationPercentages();
+
+  const needsAndDebt = expected * allocation.needs / 100;
   const needs = Math.max(0,needsAndDebt-debt);
+  const wants = expected * allocation.wants / 100;
+  const saving = expected * allocation.saving / 100;
   const overCommit = Math.max(0,debt-needsAndDebt);
 
   return {
@@ -1875,9 +2103,10 @@ function automaticMoneyPlanTargets(expectedAmount,debtAmount=0){
     NeedsAndDebt:needsAndDebt,
     Needs:needs,
     Debt:debt,
-    Wants:expected * 0.30,
-    Saving:expected * 0.20,
-    OverCommit:overCommit
+    Wants:wants,
+    Saving:saving,
+    OverCommit:overCommit,
+    Allocation:allocation
   };
 }
 
@@ -1891,6 +2120,15 @@ function renderAutomaticMoneyPlan(period,groups){
     expected.total,
     expectedDebt.total
   );
+  const allocation = target.Allocation;
+
+  renderAllocationPercentageControls();
+
+  const title = document.querySelector(".auto-money-plan-card h2");
+  if(title){
+    title.textContent =
+      `Expected ${allocation.needs} / ${allocation.wants} / ${allocation.saving}`;
+  }
 
   const actual = {
     Needs:number(groups?.Needs),
@@ -1926,13 +2164,13 @@ function renderAutomaticMoneyPlan(period,groups){
         Debt motor tetap tercatat sebesar <b>${rupiah(expectedDebt.total)}</b>.`;
     }else if(target.OverCommit > 0){
       notice.innerHTML = `<b>Perhatian:</b> Debt sebesar
-        <b>${rupiah(expectedDebt.total)}</b> sudah melebihi porsi Needs 50%
+        <b>${rupiah(expectedDebt.total)}</b> sudah melebihi porsi Needs ${allocation.needs}%
         sebesar <b>${rupiah(target.NeedsAndDebt)}</b>.
         Kekurangan alokasi: <b>${rupiah(target.OverCommit)}</b>.
         Wants sebaiknya dikurangi sampai arus kas kembali aman.`;
     }else{
       notice.innerHTML = `<b>Patokan aktif.</b>
-        Needs + Debt mendapat 50% atau <b>${rupiah(target.NeedsAndDebt)}</b>.
+        Needs + Debt mendapat ${allocation.needs}% atau <b>${rupiah(target.NeedsAndDebt)}</b>.
         Debt motor mengambil <b>${rupiah(target.Debt)}</b>, sehingga sisa
         untuk Needs lain adalah <b>${rupiah(target.Needs)}</b>.
         Penjualan sebagai dana darurat: <b>${rupiah(emergencyFund)}</b>.`;
@@ -2002,7 +2240,7 @@ function renderAutomaticMoneyPlan(period,groups){
     {
       name:"Needs",
       badge:"Needs Lain",
-      pct:"Sisa dari 50%",
+      pct:`Sisa dari ${allocation.needs}%`,
       target:target.Needs,
       actual:actual.Needs,
       desc:"Kebutuhan wajib selain cicilan motor",
@@ -2014,13 +2252,13 @@ function renderAutomaticMoneyPlan(period,groups){
       pct:`${percentText(target.Debt,expected.total)} dari income`,
       target:target.Debt,
       actual:actual.Debt,
-      desc:"Bagian dari porsi Needs 50%",
+      desc:"Bagian dari porsi Needs ${allocation.needs}%",
       status:debtStatus
     },
     {
       name:"Wants",
       badge:"Wants",
-      pct:"30%",
+      pct:`${allocation.wants}%`,
       target:target.Wants,
       actual:actual.Wants,
       desc:"Keinginan dan gaya hidup",
@@ -2029,7 +2267,7 @@ function renderAutomaticMoneyPlan(period,groups){
     {
       name:"Saving",
       badge:"Saving",
-      pct:"20%",
+      pct:`${allocation.saving}%`,
       target:target.Saving,
       actual:actual.Saving,
       desc:"Tabungan dan investasi",
@@ -2082,19 +2320,19 @@ function renderAutomaticMoneyPlan(period,groups){
 
   const progressItems = [
     {
-      name:"Needs + Debt 50%",
+      name:`Needs + Debt ${allocation.needs}%`,
       target:target.NeedsAndDebt,
       actual:combinedActual,
       status:combinedStatus
     },
     {
-      name:"Wants 30%",
+      name:`Wants ${allocation.wants}%`,
       target:target.Wants,
       actual:actual.Wants,
       status:wantsStatus
     },
     {
-      name:"Saving 20%",
+      name:`Saving ${allocation.saving}%`,
       target:target.Saving,
       actual:actual.Saving,
       status:savingStatus
@@ -2161,7 +2399,7 @@ function renderAutomaticMoneyPlan(period,groups){
       <td class="status-${debtStatus.cls}">${debtStatus.text}</td>
     </tr>
     <tr>
-      <td><b>Needs + Debt 50%</b></td>
+      <td><b>Needs + Debt ${allocation.needs}%</b></td>
       <td class="right"><b>${rupiah(target.NeedsAndDebt)}</b></td>
       <td class="right"><b>${rupiah(combinedActual)}</b></td>
       <td class="right"><b>${rupiah(target.NeedsAndDebt-combinedActual)}</b></td>
@@ -2170,14 +2408,14 @@ function renderAutomaticMoneyPlan(period,groups){
       </td>
     </tr>
     <tr>
-      <td>Wants 30%</td>
+      <td>Wants ${allocation.wants}%</td>
       <td class="right">${rupiah(target.Wants)}</td>
       <td class="right">${rupiah(actual.Wants)}</td>
       <td class="right">${rupiah(target.Wants-actual.Wants)}</td>
       <td class="status-${wantsStatus.cls}">${wantsStatus.text}</td>
     </tr>
     <tr>
-      <td>Saving 20%</td>
+      <td>Saving ${allocation.saving}%</td>
       <td class="right">${rupiah(target.Saving)}</td>
       <td class="right">${rupiah(actual.Saving)}</td>
       <td class="right">${rupiah(target.Saving-actual.Saving)}</td>
@@ -2192,7 +2430,7 @@ function renderAutomaticMoneyPlan(period,groups){
     </tr>
     <tr>
       <td>Dana Darurat dari Penjualan</td>
-      <td class="right">Tidak masuk 50/30/20</td>
+      <td class="right">Tidak masuk Money Plan</td>
       <td class="right"><b>${rupiah(emergencyFund)}</b></td>
       <td class="right">Terpisah</td>
       <td class="status-good">Dana darurat</td>
@@ -2730,12 +2968,12 @@ renderAll();
 
 if("serviceWorker" in navigator){
   window.addEventListener("load", ()=>{
-    navigator.serviceWorker.register("./sw.js?v=20260715-63", {updateViaCache:"none"})
+    navigator.serviceWorker.register("./sw.js?v=20260715-64", {updateViaCache:"none"})
       .then(registration => registration.update())
       .catch(()=>{});
   });
 }
 </script>
-<script type="module" src="./cloud-sync.js?v=20260715-63"></script>
+<script type="module" src="./cloud-sync.js?v=20260715-64"></script>
 </body>
 </html>

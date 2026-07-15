@@ -1,5 +1,5 @@
 {
-  "name": "Money Tracker — Expected 50/30/20 + Debt",
+  "name": "Money Tracker — Persentase Money Plan Fleksibel",
   "short_name": "Money Tracker",
   "start_url": "./index.html",
   "display": "standalone",
@@ -19,6 +19,6 @@
       "purpose": "any maskable"
     }
   ],
-  "description": "Money tracker cloud sync dengan Expected 50/30/20, Debt motor Rp1.730.000 sebagai bagian dari Needs 50%, dan perbandingan Expected vs Actual.",
+  "description": "Money tracker cloud sync dengan persentase Needs, Wants, dan Saving yang dapat diatur sederhana, Debt motor di dalam porsi Needs, serta Expected vs Actual.",
   "scope": "./"
 }

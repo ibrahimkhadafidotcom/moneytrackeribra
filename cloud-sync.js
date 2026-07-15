@@ -106,8 +106,15 @@ if(!configReady){
       periods:deepClone(state.periods || []),
       budgetPlans:deepClone(state.budgetPlans || []),
       moneyPlans:deepClone(state.moneyPlans || []),
+      allocationPercentages:deepClone(
+        state.allocationPercentages || {
+          needs:50,
+          wants:30,
+          saving:20
+        }
+      ),
       sync:deepClone(state.sync || {deletedTransactionIds:[]}),
-      schemaVersion:6
+      schemaVersion:7
     };
   }
   function stateFromCloud(localState, preferLocalSettings=false){
@@ -120,6 +127,11 @@ if(!configReady){
       periods:Array.isArray(remoteSettings.periods) ? remoteSettings.periods : localSettings.periods,
       budgetPlans:Array.isArray(remoteSettings.budgetPlans) ? remoteSettings.budgetPlans : localSettings.budgetPlans,
       moneyPlans:Array.isArray(remoteSettings.moneyPlans) ? remoteSettings.moneyPlans : localSettings.moneyPlans,
+      allocationPercentages:
+        remoteSettings.allocationPercentages &&
+        typeof remoteSettings.allocationPercentages === "object"
+          ? remoteSettings.allocationPercentages
+          : localSettings.allocationPercentages,
       sync:remoteSettings.sync && typeof remoteSettings.sync === "object" ? remoteSettings.sync : localSettings.sync
     };
 
@@ -138,7 +150,14 @@ if(!configReady){
       periods:deepClone(chosen.periods || []),
       budgetPlans:deepClone(chosen.budgetPlans || []),
       moneyPlans:deepClone(chosen.moneyPlans || []),
-      sync:{...(deepClone(chosen.sync || {})), deletedTransactionIds:[...tombstones].slice(-2000), schemaVersion:6}
+      allocationPercentages:deepClone(
+        chosen.allocationPercentages || {
+          needs:50,
+          wants:30,
+          saving:20
+        }
+      ),
+      sync:{...(deepClone(chosen.sync || {})), deletedTransactionIds:[...tombstones].slice(-2000), schemaVersion:7}
     };
   }
 
