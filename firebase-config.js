@@ -1,13 +1,8 @@
-// ============================================================
-// TEMPEL KONFIGURASI FIREBASE KAMU DI SINI
-// Firebase Console > Project settings > General > Your apps > SDK setup and configuration
-// Ganti semua tulisan ISI_... dengan nilai dari Firebase.
-// ============================================================
 window.MONEY_TRACKER_FIREBASE_CONFIG = {
-  apiKey: "ISI_API_KEY",
-  authDomain: "ISI_PROJECT_ID.firebaseapp.com",
-  projectId: "ISI_PROJECT_ID",
-  storageBucket: "ISI_PROJECT_ID.firebasestorage.app",
-  messagingSenderId: "ISI_MESSAGING_SENDER_ID",
-  appId: "ISI_APP_ID"
+  apiKey: "AIzaSyBrTpM6gWA4iKe-9LTEsagbTL6EhdssPLI",
+  authDomain: "money-tracker-ibrahim.firebaseapp.com",
+  projectId: "money-tracker-ibrahim",
+  storageBucket: "money-tracker-ibrahim.firebasestorage.app",
+  messagingSenderId: "26173819744",
+  appId: "1:26173819744:web:290c0ee71a4939ad006c05"
 };
