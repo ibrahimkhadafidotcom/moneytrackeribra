@@ -1,5 +1,5 @@
 {
-  "name": "Money Tracker Cloud Sync — Expected 50/30/20",
+  "name": "Money Tracker — Expected 50/30/20 + Debt",
   "short_name": "Money Tracker",
   "start_url": "./index.html",
   "display": "standalone",
@@ -19,6 +19,6 @@
       "purpose": "any maskable"
     }
   ],
-  "description": "Money tracker cloud sync dengan saldo realtime dan Money Plan 50/30/20 berdasarkan Expected Gaji Bulanan, Bonus, dan Freelance.",
+  "description": "Money tracker cloud sync dengan Expected 50/30/20, Debt motor Rp1.730.000 sebagai bagian dari Needs 50%, dan perbandingan Expected vs Actual.",
   "scope": "./"
 }

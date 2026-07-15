@@ -1,10 +1,10 @@
-const CACHE_NAME = "money-tracker-cloud-sync-v6-2-expected-20260715-62";
+const CACHE_NAME = "money-tracker-cloud-sync-v6-3-debt-needs-20260715-63";
 
 const APP_SHELL = [
   "./",
-  "./index.html?v=20260715-62",
-  "./manifest.json?v=20260715-62",
-  "./cloud-sync.js?v=20260715-62",
+  "./index.html?v=20260715-63",
+  "./manifest.json?v=20260715-63",
+  "./cloud-sync.js?v=20260715-63",
   "./icon-192.png",
   "./icon-512.png"
 ];
@@ -36,7 +36,9 @@ self.addEventListener("fetch", event => {
   if(url.origin !== self.location.origin) return;
 
   if(url.pathname.endsWith("/firebase-config.js")){
-    event.respondWith(fetch(event.request,{cache:"no-store"}));
+    event.respondWith(
+      fetch(event.request,{cache:"no-store"})
+    );
     return;
   }
 
@@ -53,7 +55,8 @@ self.addEventListener("fetch", event => {
       })
       .catch(() =>
         caches.match(event.request).then(response =>
-          response || caches.match("./index.html?v=20260715-62")
+          response ||
+          caches.match("./index.html?v=20260715-63")
         )
       )
   );

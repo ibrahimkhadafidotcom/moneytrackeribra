@@ -4,10 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#111827" />
-  <title>Money Tracker Cloud Sync — v6.2 Expected Money Plan</title>
+  <title>Money Tracker Cloud Sync — v6.3 Debt Inside Needs</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <script src="./firebase-config.js?v=20260715-62"></script>
+  <script src="./firebase-config.js?v=20260715-63"></script>
   <style>
     :root{
       --bg:#f4f5f7;
@@ -305,7 +305,7 @@
       <div class="logo">₿</div>
       <div>
         <h1>Money Tracker Cloud Sync</h1>
-        <div class="subtitle">Expected Money Plan 50/30/20 + Realtime Balance · Sinkron MacBook & iPhone</div>
+        <div class="subtitle">Expected 50/30/20 + Debt Motor · Sinkron MacBook & iPhone</div>
       </div>
     </div>
     <div id="headerCloudStatus" class="cloud-badge">Cloud belum diatur</div>
@@ -350,7 +350,7 @@
           <h2 style="margin:4px 0 6px">Expected 50 / 30 / 20</h2>
           <div class="hint">
             Patokan berasal dari Expected Gaji Bulanan + Expected Bonus + Expected Freelance.
-            Penjualan dipisahkan sebagai dana darurat dan Hutang tidak dihitung sebagai income.
+            Debt motor mengambil bagian dari alokasi Needs 50%, sedangkan Penjualan tetap menjadi dana darurat.
           </div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
@@ -572,7 +572,8 @@
         <div class="notice" style="margin-bottom:14px">
           Untuk menghitung Money Plan di Dashboard, isi Expected pada
           <b>Gaji Bulanan</b>, <b>Bonus</b>, dan <b>Freelance</b>.
-          Expected Penjualan dan Hutang tidak masuk Dana Expected 50/30/20.
+          Cicilan motor otomatis memakai Rp1.730.000 per periode dan mengambil bagian dari Needs 50%.
+          Kamu dapat menggantinya dengan membuat Expected pada group <b>Debt</b>.
         </div>
         <div class="row">
           <div class="field col-6">
@@ -705,7 +706,7 @@
     <div class="card cloud-hero">
       <div class="section-title" style="margin-top:0">
         <div>
-          <div class="mini" style="color:rgba(255,255,255,.65)">Money Tracker v6.2</div>
+          <div class="mini" style="color:rgba(255,255,255,.65)">Money Tracker v6.3</div>
           <h2 style="margin:4px 0">Cloud Sync MacBook ↔ iPhone</h2>
           <div class="hint">Login dengan akun yang sama di dua device. Transaksi, saldo rekening, kategori, periode, dan budgeting akan ikut pindah.</div>
         </div>
@@ -798,7 +799,7 @@
   </section>
 </main>
 
-<div class="footer">Money Tracker Cloud Sync · Firebase Edition · v6.2 · Expected Money Plan</div>
+<div class="footer">Money Tracker Cloud Sync · Firebase Edition · v6.3 · Debt di Dalam Needs 50%</div>
 <div id="toast" class="toast"></div>
 
 <script>
@@ -1346,13 +1347,14 @@ function renderVisualDashboard(period, groups, plans){
 
   const planGroups = {
     ...groups,
-    Income:actualPlannedIncome.total
+    Income:actualPlannedIncome.total,
+    Debt:actualDebtExpense(period)
   };
 
   const expenseActual =
     number(groups.Needs) +
     number(groups.Wants) +
-    number(groups.Debt) +
+    actualDebtExpense(period) +
     number(groups.Saving);
 
   const expenseBudget =
@@ -1367,7 +1369,7 @@ function renderVisualDashboard(period, groups, plans){
   document.getElementById("metricExpensePct").textContent =
     `${percentText(expenseActual,expenseBudget)} dari total expected`;
 
-  const statusGroups = ["Income","Needs","Wants","Saving","Debt"];
+  const statusGroups = ["Income","Debt","Needs","Wants","Saving"];
 
   document.getElementById("visualStatusOverview").innerHTML = statusGroups.map(group => {
     const st = budgetStatus(group,budgetGroup[group],planGroups[group]);
@@ -1392,11 +1394,11 @@ function renderVisualDashboard(period, groups, plans){
   document.getElementById("visualDonut").innerHTML = `<div class="chartbox">${donutSVG([
     {name:"Needs",value:groups.Needs},
     {name:"Wants",value:groups.Wants},
-    {name:"Debt",value:groups.Debt},
+    {name:"Debt",value:actualDebtExpense(period)},
     {name:"Saving",value:groups.Saving}
   ])}</div>`;
 
-  const comparisonKeys = ["Income","Needs","Wants","Saving","Debt"];
+  const comparisonKeys = ["Income","Debt","Needs","Wants","Saving"];
   const maxVal = Math.max(
     1,
     ...comparisonKeys.flatMap(group => [
@@ -1437,7 +1439,7 @@ function renderVisualDashboard(period, groups, plans){
   const totalIncomeActual = number(groups.Income);
   const needs = number(groups.Needs);
   const wants = number(groups.Wants);
-  const debt = number(groups.Debt);
+  const debt = actualDebtExpense(period);
   const saving = number(groups.Saving);
   const totalLeft =
     number(period?.startBalance) +
@@ -1511,7 +1513,7 @@ function renderVisualDashboard(period, groups, plans){
     visualSummaryTable("Wants",plans,actualCat);
 
   document.getElementById("visualDebt").innerHTML =
-    visualSummaryTable("Debt",plans,actualCat);
+    renderDebtVisualSummary(period,plans);
 
   const expectedIncomePlans = plans.filter(plan =>
     plan.group === "Income" &&
@@ -1542,7 +1544,7 @@ function renderDashboard(){
   const expense =
     number(groups.Needs) +
     number(groups.Wants) +
-    number(groups.Debt) +
+    actualDebtExpense(period) +
     number(groups.Saving);
 
   const net = totalIncomeActual - expense;
@@ -1558,10 +1560,11 @@ function renderDashboard(){
   const budgetByGroup = effectiveBudgetByGroup(period,plans);
   const comparisonActual = {
     ...groups,
-    Income:plannedActualIncome.total
+    Income:plannedActualIncome.total,
+    Debt:actualDebtExpense(period)
   };
 
-  const rows = ["Income","Needs","Wants","Saving","Debt"].map(group => {
+  const rows = ["Income","Debt","Needs","Wants","Saving"].map(group => {
     const actual = number(comparisonActual[group]);
     const budget = number(budgetByGroup[group]);
     const st = budgetStatus(group,budget,actual);
@@ -1606,10 +1609,30 @@ function renderDashboard(){
 
   const actualCat = actualByCategory(period);
 
-  const progressRows = plans
+  const expectedDebt = expectedDebtBreakdown(period);
+  const debtActualCategories = actualDebtByCategory(period);
+  const hasDebtPlan = plans.some(plan => plan.group === "Debt");
+  const plansWithDefaultDebt = hasDebtPlan
+    ? plans
+    : [
+        ...plans,
+        {
+          id:"default-cicilan-motor",
+          periodId:period?.id,
+          group:"Debt",
+          category:"Cicilan Motor",
+          amount:expectedDebt["Cicilan Motor"]
+        }
+      ];
+
+  const progressRows = plansWithDefaultDebt
     .map(plan => {
-      const actual = number(actualCat[plan.category]);
-      const st = budgetStatus(plan.group,plan.amount,actual);
+      const actual = plan.group === "Debt"
+        ? number(debtActualCategories[plan.category])
+        : number(actualCat[plan.category]);
+      const st = plan.group === "Debt"
+        ? debtPaymentStatus(plan.amount,actual)
+        : budgetStatus(plan.group,plan.amount,actual);
       return {...plan,actual,st};
     })
     .sort((a,b) =>
@@ -1646,6 +1669,156 @@ function renderDashboard(){
 
 
 const EXPECTED_INCOME_CATEGORIES = ["Gaji Bulanan","Bonus","Freelance"];
+
+const DEFAULT_MONTHLY_MOTOR_DEBT = 1730000;
+
+function expectedDebtBreakdown(period){
+  const result = {
+    "Cicilan Motor":DEFAULT_MONTHLY_MOTOR_DEBT,
+    "Debt Lain":0,
+    total:DEFAULT_MONTHLY_MOTOR_DEBT,
+    source:"Default cicilan motor"
+  };
+
+  if(!period) return result;
+
+  const debtPlans = getBudgetPlansForPeriod(period.id)
+    .filter(plan => plan.group === "Debt" && number(plan.amount) > 0);
+
+  if(!debtPlans.length) return result;
+
+  const motorPlans = debtPlans.filter(plan =>
+    norm(plan.category) === norm("Cicilan Motor")
+  );
+  const otherPlans = debtPlans.filter(plan =>
+    norm(plan.category) !== norm("Cicilan Motor")
+  );
+
+  const motorTotal = motorPlans.reduce(
+    (sum,plan) => sum + number(plan.amount),
+    0
+  );
+  const otherTotal = otherPlans.reduce(
+    (sum,plan) => sum + number(plan.amount),
+    0
+  );
+
+  result["Cicilan Motor"] = motorTotal || DEFAULT_MONTHLY_MOTOR_DEBT;
+  result["Debt Lain"] = otherTotal;
+  result.total = result["Cicilan Motor"] + result["Debt Lain"];
+  result.source = motorTotal
+    ? "Expected Debt dari Budgeting"
+    : "Default cicilan motor + Expected Debt lain";
+
+  return result;
+}
+
+function actualDebtExpense(period){
+  return state.transactions
+    .filter(tx => {
+      if(period && !isInPeriod(tx,period)) return false;
+      if(tx.type !== "Pengeluaran") return false;
+      return (tx.group || getGroupByCategory(tx.category)) === "Debt";
+    })
+    .reduce((sum,tx) => sum + number(tx.amount),0);
+}
+
+function actualDebtByCategory(period){
+  const result = {};
+
+  for(const tx of state.transactions){
+    if(period && !isInPeriod(tx,period)) continue;
+    if(tx.type !== "Pengeluaran") continue;
+
+    const group = tx.group || getGroupByCategory(tx.category);
+    if(group !== "Debt") continue;
+
+    result[tx.category] = number(result[tx.category]) + number(tx.amount);
+  }
+
+  return result;
+}
+
+function debtPaymentStatus(target,actual){
+  target = number(target);
+  actual = number(actual);
+
+  if(actual >= target && target > 0){
+    return {
+      text:actual > target ? "Lebih Bayar" : "Lunas",
+      cls:actual > target ? "warn" : "good",
+      pct:target ? Math.min(150,actual / target * 100) : 100
+    };
+  }
+
+  if(actual > 0){
+    return {
+      text:"Belum Lunas",
+      cls:"warn",
+      pct:target ? Math.min(100,actual / target * 100) : 0
+    };
+  }
+
+  return {
+    text:"Belum Dibayar",
+    cls:"bad",
+    pct:0
+  };
+}
+
+function renderDebtVisualSummary(period,plans){
+  const debtExpected = expectedDebtBreakdown(period);
+  const actualCategories = actualDebtByCategory(period);
+  const debtPlans = plans.filter(plan => plan.group === "Debt");
+
+  let rows = debtPlans.map(plan => {
+    const actual = number(actualCategories[plan.category]);
+    const status = debtPaymentStatus(plan.amount,actual);
+
+    return `<tr>
+      <td>${plan.category}</td>
+      <td class="right">${rupiah(plan.amount)}</td>
+      <td class="right">${rupiah(actual)}</td>
+      <td class="right">${percentText(actual,plan.amount)}</td>
+      <td class="right">${rupiah(number(plan.amount)-actual)}</td>
+      <td class="status-${status.cls}">${status.text}</td>
+    </tr>`;
+  }).join("");
+
+  if(!rows){
+    const actualMotor = number(actualCategories["Cicilan Motor"]);
+    const status = debtPaymentStatus(
+      debtExpected["Cicilan Motor"],
+      actualMotor
+    );
+
+    rows = `<tr>
+      <td>Cicilan Motor</td>
+      <td class="right">${rupiah(debtExpected["Cicilan Motor"])}</td>
+      <td class="right">${rupiah(actualMotor)}</td>
+      <td class="right">${percentText(actualMotor,debtExpected["Cicilan Motor"])}</td>
+      <td class="right">${rupiah(debtExpected["Cicilan Motor"]-actualMotor)}</td>
+      <td class="status-${status.cls}">${status.text}</td>
+    </tr>`;
+  }
+
+  return `<table>
+    <tr>
+      <th>Category</th>
+      <th class="right">Expected</th>
+      <th class="right">Actual</th>
+      <th class="right">%</th>
+      <th class="right">Sisa</th>
+      <th>Status</th>
+    </tr>
+    ${rows}
+  </table>
+  <div class="notice" style="margin-top:10px">
+    Debt merupakan bagian dari alokasi <b>Needs + Debt 50%</b>.
+    Sumber target: <b>${debtExpected.source}</b>.
+  </div>`;
+}
+
 
 function expectedIncomeBreakdown(period){
   const result = {
@@ -1690,25 +1863,38 @@ function emergencyFundIncome(period){
   return number(actualCategory["Penjualan"]);
 }
 
-function automaticMoneyPlanTargets(expectedAmount){
-  const expected = Math.max(0, number(expectedAmount));
+function automaticMoneyPlanTargets(expectedAmount,debtAmount=0){
+  const expected = Math.max(0,number(expectedAmount));
+  const debt = Math.max(0,number(debtAmount));
+  const needsAndDebt = expected * 0.50;
+  const needs = Math.max(0,needsAndDebt-debt);
+  const overCommit = Math.max(0,debt-needsAndDebt);
+
   return {
-    Income: expected,
-    Needs: expected * 0.50,
-    Wants: expected * 0.30,
-    Saving: expected * 0.20,
-    Debt: 0
+    Income:expected,
+    NeedsAndDebt:needsAndDebt,
+    Needs:needs,
+    Debt:debt,
+    Wants:expected * 0.30,
+    Saving:expected * 0.20,
+    OverCommit:overCommit
   };
 }
 
-function renderAutomaticMoneyPlan(period, groups){
+function renderAutomaticMoneyPlan(period,groups){
   const expected = expectedIncomeBreakdown(period);
   const actualIncome = actualPlannedIncomeBreakdown(period);
   const emergencyFund = emergencyFundIncome(period);
-  const target = automaticMoneyPlanTargets(expected.total);
+  const expectedDebt = expectedDebtBreakdown(period);
+  const actualDebt = actualDebtExpense(period);
+  const target = automaticMoneyPlanTargets(
+    expected.total,
+    expectedDebt.total
+  );
 
   const actual = {
     Needs:number(groups?.Needs),
+    Debt:actualDebt,
     Wants:number(groups?.Wants),
     Saving:number(groups?.Saving)
   };
@@ -1734,13 +1920,23 @@ function renderAutomaticMoneyPlan(period, groups){
   }
 
   if(notice){
-    notice.innerHTML = expected.total > 0
-      ? `<b>Patokan aktif.</b> Dana Expected berasal dari Gaji Bulanan, Bonus, dan Freelance.
-         Actual spend periode ini langsung dibandingkan dengan pembagian 50/30/20.
-         Penjualan sebagai dana darurat saat ini: <b>${rupiah(emergencyFund)}</b>.`
-      : `<b>Dana Expected masih Rp0.</b> Buka menu Budgeting lalu isi Expected
-         Gaji Bulanan, Bonus, dan Freelance untuk periode aktif.
-         Penjualan dan Hutang tidak ikut dihitung.`;
+    if(expected.total <= 0){
+      notice.innerHTML = `<b>Dana Expected masih Rp0.</b>
+        Isi Expected Gaji Bulanan, Bonus, dan Freelance pada menu Budgeting.
+        Debt motor tetap tercatat sebesar <b>${rupiah(expectedDebt.total)}</b>.`;
+    }else if(target.OverCommit > 0){
+      notice.innerHTML = `<b>Perhatian:</b> Debt sebesar
+        <b>${rupiah(expectedDebt.total)}</b> sudah melebihi porsi Needs 50%
+        sebesar <b>${rupiah(target.NeedsAndDebt)}</b>.
+        Kekurangan alokasi: <b>${rupiah(target.OverCommit)}</b>.
+        Wants sebaiknya dikurangi sampai arus kas kembali aman.`;
+    }else{
+      notice.innerHTML = `<b>Patokan aktif.</b>
+        Needs + Debt mendapat 50% atau <b>${rupiah(target.NeedsAndDebt)}</b>.
+        Debt motor mengambil <b>${rupiah(target.Debt)}</b>, sehingga sisa
+        untuk Needs lain adalah <b>${rupiah(target.Needs)}</b>.
+        Penjualan sebagai dana darurat: <b>${rupiah(emergencyFund)}</b>.`;
+    }
   }
 
   if(sources){
@@ -1767,7 +1963,8 @@ function renderAutomaticMoneyPlan(period, groups){
         <div class="source-label">${item.name}</div>
         <div class="source-value">${rupiah(item.expected)}</div>
         <div class="source-actual">
-          Actual masuk: ${rupiah(item.actual)} · ${percentText(item.actual,item.expected)}
+          Actual masuk: ${rupiah(item.actual)} ·
+          ${percentText(item.actual,item.expected)}
         </div>
       </div>
     `).join("") + `
@@ -1781,72 +1978,165 @@ function renderAutomaticMoneyPlan(period, groups){
     `;
   }
 
+  const needsStatus = budgetStatus(
+    "Needs",
+    target.Needs,
+    actual.Needs
+  );
+  const debtStatus = debtPaymentStatus(
+    target.Debt,
+    actual.Debt
+  );
+  const wantsStatus = budgetStatus(
+    "Wants",
+    target.Wants,
+    actual.Wants
+  );
+  const savingStatus = budgetStatus(
+    "Saving",
+    target.Saving,
+    actual.Saving
+  );
+
   const items = [
     {
       name:"Needs",
-      pct:50,
+      badge:"Needs Lain",
+      pct:"Sisa dari 50%",
       target:target.Needs,
       actual:actual.Needs,
-      desc:"Kebutuhan utama dan wajib"
+      desc:"Kebutuhan wajib selain cicilan motor",
+      status:needsStatus
+    },
+    {
+      name:"Debt",
+      badge:"Debt Motor",
+      pct:`${percentText(target.Debt,expected.total)} dari income`,
+      target:target.Debt,
+      actual:actual.Debt,
+      desc:"Bagian dari porsi Needs 50%",
+      status:debtStatus
     },
     {
       name:"Wants",
-      pct:30,
+      badge:"Wants",
+      pct:"30%",
       target:target.Wants,
       actual:actual.Wants,
-      desc:"Keinginan dan gaya hidup"
+      desc:"Keinginan dan gaya hidup",
+      status:wantsStatus
     },
     {
       name:"Saving",
-      pct:20,
+      badge:"Saving",
+      pct:"20%",
       target:target.Saving,
       actual:actual.Saving,
-      desc:"Tabungan dan investasi"
+      desc:"Tabungan dan investasi",
+      status:savingStatus
     }
   ];
 
   boxes.innerHTML = items.map(item => {
-    const remaining = item.target - item.actual;
-    const st = budgetStatus(item.name,item.target,item.actual);
-    const label = item.name === "Saving" ? "Actual dialokasikan" : "Actual spend";
+    const remaining = item.target-item.actual;
+    const label = item.name === "Saving"
+      ? "Actual dialokasikan"
+      : item.name === "Debt"
+        ? "Sudah dibayar"
+        : "Actual spend";
+
+    const remainingLabel = item.name === "Saving"
+      ? "Kurang dari target"
+      : item.name === "Debt"
+        ? "Sisa cicilan periode ini"
+        : "Sisa budget";
 
     return `<div class="money-plan-box">
-      <span class="pill ${item.name.toLowerCase()}">${item.name} ${item.pct}%</span>
+      <span class="pill ${item.name.toLowerCase()}">
+        ${item.badge} · ${item.pct}
+      </span>
       <div class="plan-label" style="margin-top:11px">Expected</div>
       <div class="plan-value">${rupiah(item.target)}</div>
       <div class="plan-sub">${item.desc}</div>
       <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:10px">
         <div class="mini">${label}: <b>${rupiah(item.actual)}</b></div>
         <div class="mini">
-          ${item.name === "Saving" ? "Kurang dari target" : "Sisa budget"}:
-          <b class="status-${remaining >= 0 ? "good" : "bad"}">${rupiah(remaining)}</b>
+          ${remainingLabel}:
+          <b class="status-${remaining >= 0 ? "good" : "bad"}">
+            ${rupiah(remaining)}
+          </b>
         </div>
-        <div class="mini status-${st.cls}" style="margin-top:4px"><b>${st.text}</b></div>
+        <div class="mini status-${item.status.cls}" style="margin-top:4px">
+          <b>${item.status.text}</b>
+        </div>
       </div>
     </div>`;
   }).join("");
 
-  progress.innerHTML = items.map(item => {
-    const pct = item.target ? item.actual / item.target * 100 : 0;
-    const st = budgetStatus(item.name,item.target,item.actual);
+  const combinedActual = actual.Needs+actual.Debt;
+  const combinedStatus = budgetStatus(
+    "Needs",
+    target.NeedsAndDebt,
+    combinedActual
+  );
+
+  const progressItems = [
+    {
+      name:"Needs + Debt 50%",
+      target:target.NeedsAndDebt,
+      actual:combinedActual,
+      status:combinedStatus
+    },
+    {
+      name:"Wants 30%",
+      target:target.Wants,
+      actual:actual.Wants,
+      status:wantsStatus
+    },
+    {
+      name:"Saving 20%",
+      target:target.Saving,
+      actual:actual.Saving,
+      status:savingStatus
+    }
+  ];
+
+  progress.innerHTML = progressItems.map(item => {
+    const pct = item.target
+      ? item.actual / item.target * 100
+      : 0;
 
     return `<div class="money-plan-actual-row">
       <div class="money-plan-actual-top">
-        <b>${item.name} ${item.pct}%</b>
+        <b>${item.name}</b>
         <span class="mini">
           ${rupiah(item.actual)} / ${rupiah(item.target)} ·
-          <span class="status-${st.cls}">${Math.round(pct)}%</span>
+          <span class="status-${item.status.cls}">
+            ${Math.round(pct)}%
+          </span>
         </span>
       </div>
       <div class="progress">
-        <div class="bar ${st.cls}" style="width:${Math.min(100,Math.max(0,pct))}%"></div>
+        <div class="bar ${item.status.cls}"
+          style="width:${Math.min(100,Math.max(0,pct))}%">
+        </div>
       </div>
     </div>`;
   }).join("");
 
-  const totalActual = actual.Needs + actual.Wants + actual.Saving;
-  const totalTarget = target.Needs + target.Wants + target.Saving;
-  const totalRemaining = totalTarget - totalActual;
+  const totalActual =
+    actual.Needs +
+    actual.Debt +
+    actual.Wants +
+    actual.Saving;
+
+  const totalTarget =
+    target.Needs +
+    target.Debt +
+    target.Wants +
+    target.Saving;
+
+  const totalRemaining = totalTarget-totalActual;
 
   summary.innerHTML = `<table>
     <tr>
@@ -1856,18 +2146,45 @@ function renderAutomaticMoneyPlan(period, groups){
       <th class="right">Selisih</th>
       <th>Status</th>
     </tr>
-    ${items.map(item => {
-      const st = budgetStatus(item.name,item.target,item.actual);
-      return `<tr>
-        <td>${item.name} ${item.pct}%</td>
-        <td class="right">${rupiah(item.target)}</td>
-        <td class="right">${rupiah(item.actual)}</td>
-        <td class="right">${rupiah(item.target-item.actual)}</td>
-        <td class="status-${st.cls}">${st.text}</td>
-      </tr>`;
-    }).join("")}
     <tr>
-      <td><b>Total 50/30/20</b></td>
+      <td>Needs Lain</td>
+      <td class="right">${rupiah(target.Needs)}</td>
+      <td class="right">${rupiah(actual.Needs)}</td>
+      <td class="right">${rupiah(target.Needs-actual.Needs)}</td>
+      <td class="status-${needsStatus.cls}">${needsStatus.text}</td>
+    </tr>
+    <tr>
+      <td>Debt Motor</td>
+      <td class="right">${rupiah(target.Debt)}</td>
+      <td class="right">${rupiah(actual.Debt)}</td>
+      <td class="right">${rupiah(target.Debt-actual.Debt)}</td>
+      <td class="status-${debtStatus.cls}">${debtStatus.text}</td>
+    </tr>
+    <tr>
+      <td><b>Needs + Debt 50%</b></td>
+      <td class="right"><b>${rupiah(target.NeedsAndDebt)}</b></td>
+      <td class="right"><b>${rupiah(combinedActual)}</b></td>
+      <td class="right"><b>${rupiah(target.NeedsAndDebt-combinedActual)}</b></td>
+      <td class="status-${combinedStatus.cls}">
+        <b>${combinedStatus.text}</b>
+      </td>
+    </tr>
+    <tr>
+      <td>Wants 30%</td>
+      <td class="right">${rupiah(target.Wants)}</td>
+      <td class="right">${rupiah(actual.Wants)}</td>
+      <td class="right">${rupiah(target.Wants-actual.Wants)}</td>
+      <td class="status-${wantsStatus.cls}">${wantsStatus.text}</td>
+    </tr>
+    <tr>
+      <td>Saving 20%</td>
+      <td class="right">${rupiah(target.Saving)}</td>
+      <td class="right">${rupiah(actual.Saving)}</td>
+      <td class="right">${rupiah(target.Saving-actual.Saving)}</td>
+      <td class="status-${savingStatus.cls}">${savingStatus.text}</td>
+    </tr>
+    <tr>
+      <td><b>Total Alokasi</b></td>
       <td class="right"><b>${rupiah(totalTarget)}</b></td>
       <td class="right"><b>${rupiah(totalActual)}</b></td>
       <td class="right"><b>${rupiah(totalRemaining)}</b></td>
@@ -1875,7 +2192,7 @@ function renderAutomaticMoneyPlan(period, groups){
     </tr>
     <tr>
       <td>Dana Darurat dari Penjualan</td>
-      <td class="right">Tidak masuk expected</td>
+      <td class="right">Tidak masuk 50/30/20</td>
       <td class="right"><b>${rupiah(emergencyFund)}</b></td>
       <td class="right">Terpisah</td>
       <td class="status-good">Dana darurat</td>
@@ -1906,17 +2223,22 @@ function getMoneyPlanDraft(){
     savingPct:number(document.getElementById("moneyPlanSavingPct")?.value)
   };
 }
-function effectiveBudgetByGroup(period, plans){
-  const fromCategories = sumBudgetByGroup(plans || []);
+function effectiveBudgetByGroup(period,plans){
   const expected = expectedIncomeBreakdown(period);
-  const targets = automaticMoneyPlanTargets(expected.total);
+  const expectedDebt = expectedDebtBreakdown(period);
+  const targets = automaticMoneyPlanTargets(
+    expected.total,
+    expectedDebt.total
+  );
 
   return {
     Income:number(expected.total),
     Needs:number(targets.Needs),
     Wants:number(targets.Wants),
-    Debt:number(fromCategories.Debt),
-    Saving:number(targets.Saving)
+    Debt:number(targets.Debt),
+    Saving:number(targets.Saving),
+    NeedsAndDebt:number(targets.NeedsAndDebt),
+    OverCommit:number(targets.OverCommit)
   };
 }
 function updateMoneyPlanPreview(){
@@ -2408,12 +2730,12 @@ renderAll();
 
 if("serviceWorker" in navigator){
   window.addEventListener("load", ()=>{
-    navigator.serviceWorker.register("./sw.js?v=20260715-62", {updateViaCache:"none"})
+    navigator.serviceWorker.register("./sw.js?v=20260715-63", {updateViaCache:"none"})
       .then(registration => registration.update())
       .catch(()=>{});
   });
 }
 </script>
-<script type="module" src="./cloud-sync.js?v=20260715-62"></script>
+<script type="module" src="./cloud-sync.js?v=20260715-63"></script>
 </body>
 </html>
