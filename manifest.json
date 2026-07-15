@@ -1,5 +1,5 @@
 {
-  "name": "Money Tracker — Import Fix",
+  "name": "Money Tracker — Saving Summary",
   "short_name": "Money Tracker",
   "start_url": "./index.html",
   "display": "standalone",
@@ -19,6 +19,6 @@
       "purpose": "any maskable"
     }
   ],
-  "description": "Money tracker cloud sync dengan import merge laporan Sheets, deteksi duplikat, dan perbaikan refresh tampilan setelah import.",
+  "description": "Money tracker cloud sync dengan tabel Saving Summary rinci, Expected vs Actual, periode budgeting, dan import merge laporan.",
   "scope": "./"
 }

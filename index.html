@@ -4,10 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#111827" />
-  <title>Money Tracker Cloud Sync — v6.6 Import Fix</title>
+  <title>Money Tracker Cloud Sync — v6.8 Saving Summary</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <script src="./firebase-config.js?v=20260715-66"></script>
+  <script src="./firebase-config.js?v=20260715-68"></script>
   <style>
     :root{
       --bg:#f4f5f7;
@@ -552,9 +552,14 @@
         <div id="visualDebt" class="table-wrap"></div>
       </div>
       <div class="card">
-        <h2>Income Summary</h2>
-        <div id="visualIncome" class="table-wrap"></div>
+        <h2>Saving Summary</h2>
+        <div id="visualSaving" class="table-wrap"></div>
       </div>
+    </div>
+
+    <div class="card" style="margin-top:14px">
+      <h2>Income Summary</h2>
+      <div id="visualIncome" class="table-wrap"></div>
     </div>
 
     <div class="card" style="margin-top:14px">
@@ -816,7 +821,7 @@
     <div class="card cloud-hero">
       <div class="section-title" style="margin-top:0">
         <div>
-          <div class="mini" style="color:rgba(255,255,255,.65)">Money Tracker v6.6</div>
+          <div class="mini" style="color:rgba(255,255,255,.65)">Money Tracker v6.8</div>
           <h2 style="margin:4px 0">Cloud Sync MacBook ↔ iPhone</h2>
           <div class="hint">Login dengan akun yang sama di dua device. Transaksi, saldo rekening, kategori, periode, dan budgeting akan ikut pindah.</div>
         </div>
@@ -912,7 +917,7 @@
   </section>
 </main>
 
-<div class="footer">Money Tracker Cloud Sync · Firebase Edition · v6.6 · Import Fix</div>
+<div class="footer">Money Tracker Cloud Sync · Firebase Edition · v6.8 · Saving Summary</div>
 <div id="toast" class="toast"></div>
 
 <script>
@@ -1661,6 +1666,9 @@ function renderVisualDashboard(period, groups, plans){
 
   document.getElementById("visualDebt").innerHTML =
     renderDebtVisualSummary(period,plans);
+
+  document.getElementById("visualSaving").innerHTML =
+    visualSummaryTable("Saving",plans,actualCat);
 
   const expectedIncomePlans = plans.filter(plan =>
     plan.group === "Income" &&
@@ -2593,47 +2601,145 @@ function resetMoneyPlanPercentages(){
 }
 
 function renderPeriodOptions(){
-  const active = getActivePeriod();
-  const opts = state.periods.map(p=>`<option value="${p.id}" ${p.active?"selected":""}>${p.name} · ${p.start}–${p.end}</option>`).join("");
-  document.getElementById("activePeriodSelect").innerHTML = opts;
-  document.getElementById("budgetPeriodSelect").innerHTML = opts;
-  document.getElementById("activePeriodSelect").onchange = e => setActivePeriod(e.target.value);
-}
-function renderBudgeting(){
-  const period = getActivePeriod();
-  const actualCat = actualByCategory(period);
-  const plans = getBudgetPlansForPeriod(period?.id);
+  const periods = Array.isArray(state.periods)
+    ? state.periods.filter(period => period && period.id)
+    : [];
 
-  if(!plans.length){
-    document.getElementById("budgetTable").innerHTML = `<div class="empty">Belum ada budget plan untuk periode aktif.</div>`;
-  } else {
-    const rows = plans.map(p=>{
-      const actual = number(actualCat[p.category]);
-      const st = budgetStatus(p.group, p.amount, actual);
-      const sisa = p.group==="Income" ? actual-number(p.amount) : number(p.amount)-actual;
-      return `<tr>
-        <td><span class="pill ${p.group.toLowerCase()}">${p.group}</span></td>
-        <td>${p.category}</td>
-        <td class="right">${rupiah(p.amount)}</td>
-        <td class="right">${rupiah(actual)}</td>
-        <td class="right">${rupiah(sisa)}</td>
-        <td class="status-${st.cls}">${st.text}</td>
-        <td><button class="danger" onclick="deleteBudgetPlan('${p.id}')">Hapus</button></td>
-      </tr>`;
-    }).join("");
-    document.getElementById("budgetTable").innerHTML = `<table>
-      <tr><th>Group</th><th>Kategori</th><th class="right">Expected</th><th class="right">Actual</th><th class="right">Selisih</th><th>Status</th><th>Aksi</th></tr>${rows}
-    </table>`;
+  const options = periods.map(period =>
+    `<option value="${period.id}" ${period.active ? "selected" : ""}>
+      ${period.name || "Periode tanpa nama"} ·
+      ${period.start || "-"}–${period.end || "-"}
+    </option>`
+  ).join("");
+
+  const activePeriodSelect = document.getElementById("activePeriodSelect");
+  const budgetPeriodSelect = document.getElementById("budgetPeriodSelect");
+
+  if(activePeriodSelect){
+    activePeriodSelect.innerHTML = options;
+    activePeriodSelect.onchange = event =>
+      setActivePeriod(event.target.value);
   }
 
-  document.getElementById("periodTable").innerHTML = `<table>
-    <tr><th>Nama</th><th>Mulai</th><th>Selesai</th><th class="right">Start Balance</th><th>Status</th><th>Aksi</th></tr>
-    ${state.periods.map(p=>`
-      <tr>
-        <td>${p.name}</td><td>${p.start}</td><td>${p.end}</td><td class="right">${rupiah(p.startBalance)}</td><td>${p.active?"Aktif":"-"}</td>
-        <td><button class="soft" onclick="setActivePeriod('${p.id}')">Set Aktif</button> <button class="danger" onclick="deletePeriod('${p.id}')">Hapus</button></td>
-      </tr>
-    `).join("")}
+  if(budgetPeriodSelect){
+    budgetPeriodSelect.innerHTML = options;
+  }
+}
+function renderBudgeting(){
+  const periodTable = document.getElementById("periodTable");
+  const budgetTable = document.getElementById("budgetTable");
+
+  const periods = Array.isArray(state.periods)
+    ? state.periods.filter(period => period && period.id)
+    : [];
+
+  if(periodTable){
+    if(!periods.length){
+      periodTable.innerHTML = `
+        <div class="empty">
+          Belum ada periode. Isi form Setup Periode Budget lalu tekan Simpan Periode.
+        </div>`;
+    }else{
+      periodTable.innerHTML = `<table>
+        <tr>
+          <th>Nama</th>
+          <th>Mulai</th>
+          <th>Selesai</th>
+          <th class="right">Start Balance</th>
+          <th>Status</th>
+          <th>Aksi</th>
+        </tr>
+        ${periods.map(period => `
+          <tr>
+            <td>${period.name || "Periode tanpa nama"}</td>
+            <td>${period.start || "-"}</td>
+            <td>${period.end || "-"}</td>
+            <td class="right">${rupiah(period.startBalance)}</td>
+            <td>${period.active ? "Aktif" : "-"}</td>
+            <td>
+              ${period.active
+                ? `<span class="pill income">Sedang Aktif</span>`
+                : `<button class="soft" onclick="setActivePeriod('${period.id}')">Set Aktif</button>`
+              }
+              <button class="danger" onclick="deletePeriod('${period.id}')">Hapus</button>
+            </td>
+          </tr>
+        `).join("")}
+      </table>`;
+    }
+  }
+
+  const period = getActivePeriod();
+
+  if(!period){
+    if(budgetTable){
+      budgetTable.innerHTML = `
+        <div class="empty">
+          Belum ada periode aktif. Pilih Set Aktif pada Daftar Periode.
+        </div>`;
+    }
+    return;
+  }
+
+  const actualCat = actualByCategory(period);
+  const rawPlans = getBudgetPlansForPeriod(period.id);
+  const plans = Array.isArray(rawPlans)
+    ? rawPlans.filter(plan =>
+        plan &&
+        plan.id &&
+        plan.category &&
+        plan.group
+      )
+    : [];
+
+  if(!budgetTable) return;
+
+  if(!plans.length){
+    budgetTable.innerHTML = `
+      <div class="empty">
+        Belum ada budget plan untuk periode aktif.
+      </div>`;
+    return;
+  }
+
+  const rows = plans.map(plan => {
+    const group = String(plan.group || "Needs");
+    const category = String(plan.category || "Tanpa kategori");
+    const expected = number(plan.amount);
+    const actual = number(actualCat[category]);
+    const status = budgetStatus(group,expected,actual);
+    const difference = group === "Income"
+      ? actual-expected
+      : expected-actual;
+
+    return `<tr>
+      <td>
+        <span class="pill ${group.toLowerCase()}">${group}</span>
+      </td>
+      <td>${category}</td>
+      <td class="right">${rupiah(expected)}</td>
+      <td class="right">${rupiah(actual)}</td>
+      <td class="right">${rupiah(difference)}</td>
+      <td class="status-${status.cls}">${status.text}</td>
+      <td>
+        <button class="danger" onclick="deleteBudgetPlan('${plan.id}')">
+          Hapus
+        </button>
+      </td>
+    </tr>`;
+  }).join("");
+
+  budgetTable.innerHTML = `<table>
+    <tr>
+      <th>Group</th>
+      <th>Kategori</th>
+      <th class="right">Expected</th>
+      <th class="right">Actual</th>
+      <th class="right">Selisih</th>
+      <th>Status</th>
+      <th>Aksi</th>
+    </tr>
+    ${rows}
   </table>`;
 }
 function savePeriod(){
@@ -3185,12 +3291,12 @@ renderAll();
 
 if("serviceWorker" in navigator){
   window.addEventListener("load", ()=>{
-    navigator.serviceWorker.register("./sw.js?v=20260715-66", {updateViaCache:"none"})
+    navigator.serviceWorker.register("./sw.js?v=20260715-68", {updateViaCache:"none"})
       .then(registration => registration.update())
       .catch(()=>{});
   });
 }
 </script>
-<script type="module" src="./cloud-sync.js?v=20260715-66"></script>
+<script type="module" src="./cloud-sync.js?v=20260715-68"></script>
 </body>
 </html>
