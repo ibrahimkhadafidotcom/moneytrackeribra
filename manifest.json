@@ -1,5 +1,5 @@
 {
-  "name": "Money Tracker — Merge Import Sheets",
+  "name": "Money Tracker — Import Fix",
   "short_name": "Money Tracker",
   "start_url": "./index.html",
   "display": "standalone",
@@ -19,6 +19,6 @@
       "purpose": "any maskable"
     }
   ],
-  "description": "Money tracker cloud sync dengan import laporan Sheets secara merge, deteksi transaksi duplikat, dan Money Plan persentase fleksibel.",
+  "description": "Money tracker cloud sync dengan import merge laporan Sheets, deteksi duplikat, dan perbaikan refresh tampilan setelah import.",
   "scope": "./"
 }
