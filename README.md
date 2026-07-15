@@ -1,48 +1,36 @@
-# Money Tracker Offline — Realtime Balance v4
+# Money Tracker Cloud Sync v5
 
-Versi ini menambahkan tampilan saldo rekening realtime seperti area G2:J7 di spreadsheet.
+Money Tracker PWA dengan:
 
-## Tambahan v4
+- saldo rekening realtime;
+- budgeting periode 20–19;
+- natural-language transaction input;
+- Firebase Authentication email/password;
+- Cloud Firestore realtime sync;
+- sinkronisasi MacBook dan iPhone;
+- offline cache;
+- data terpisah per akun;
+- backup/import JSON dan export CSV.
 
-- Panel utama **Saldo Rekening Sekarang**.
-- Saldo realtime per rekening:
-  - BCA
-  - Dompet
-  - Dana
-  - Shopeepay
-  - rekening lain dari Master Rekening
-- Total uang sekarang.
-- Perhitungan saldo:
-  - saldo awal rekening
-  - + semua pemasukan ke rekening
-  - - semua pengeluaran dari rekening
-  - - transfer keluar
-  - + transfer masuk
-- Dashboard budgeting visual tetap ada.
+## File utama
 
-## Cara Mengatur Saldo Awal
+- `index.html` — aplikasi.
+- `firebase-config.js` — konfigurasi Firebase milik pengguna.
+- `cloud-sync.js` — login dan sinkronisasi Firestore.
+- `firestore.rules` — aturan keamanan.
+- `manifest.json`, `sw.js`, `icon-*.png` — PWA.
+- `TUTORIAL_BAHASA_BAYI.md` — tutorial setup lengkap.
 
-Buka menu **Master → Master Rekening**, lalu isi saldo awal masing-masing rekening.
+## Setup singkat
 
-Contoh:
-- BCA: 500000
-- Dompet: 100000
-- Dana: 0
-- Shopeepay: 0
+1. Buat project Firebase dan web app.
+2. Isi `firebase-config.js`.
+3. Aktifkan Authentication Email/Password.
+4. Buat Firestore database.
+5. Publish isi `firestore.rules`.
+6. Tambahkan domain `username.github.io` ke Authorized domains.
+7. Upload semua file app ke root GitHub repository.
+8. Login dari device yang datanya paling lengkap dan tekan **Kirim Data Device Ini ke Cloud**.
+9. Login dengan akun yang sama di device kedua.
 
-Setelah itu, setiap transaksi akan otomatis mengubah saldo rekening.
-
-## Update ke GitHub Pages
-
-Replace/upload file berikut di root repository:
-- index.html
-- manifest.json
-- sw.js
-- README.md
-
-Pastikan file `.nojekyll` tetap ada.
-
-Jika di iPhone masih tampil versi lama:
-1. Buka link app dari Safari.
-2. Refresh beberapa kali.
-3. Kalau masih sama, hapus icon Home Screen lama lalu Add to Home Screen ulang.
+Baca `TUTORIAL_BAHASA_BAYI.md` untuk langkah super rinci.

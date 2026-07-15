@@ -1,11 +1,37 @@
-const CACHE_NAME = "money-tracker-visual-budgeting-v3";
-const ASSETS = ["./", "./index.html", "./manifest.json"];
+const CACHE_NAME = "money-tracker-cloud-sync-v5-20260715";
+const APP_SHELL = [
+  "./",
+  "./index.html",
+  "./manifest.json",
+  "./firebase-config.js",
+  "./cloud-sync.js",
+  "./icon-192.png",
+  "./icon-512.png"
+];
+
 self.addEventListener("install", event => {
-  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS)));
+  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)));
+  self.skipWaiting();
 });
+
 self.addEventListener("activate", event => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.map(k => k !== CACHE_NAME ? caches.delete(k) : null))));
+  event.waitUntil(
+    caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+  );
+  self.clients.claim();
 });
+
 self.addEventListener("fetch", event => {
-  event.respondWith(caches.match(event.request).then(res => res || fetch(event.request)));
+  const url = new URL(event.request.url);
+  if(event.request.method !== "GET") return;
+  if(url.origin !== self.location.origin) return;
+  event.respondWith(
+    fetch(event.request)
+      .then(response => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
+        return response;
+      })
+      .catch(() => caches.match(event.request).then(r => r || caches.match("./index.html")))
+  );
 });
