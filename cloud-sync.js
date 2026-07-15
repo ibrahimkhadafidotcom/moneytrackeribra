@@ -105,8 +105,9 @@ if(!configReady){
       accounts:deepClone(state.accounts || []),
       periods:deepClone(state.periods || []),
       budgetPlans:deepClone(state.budgetPlans || []),
+      moneyPlans:deepClone(state.moneyPlans || []),
       sync:deepClone(state.sync || {deletedTransactionIds:[]}),
-      schemaVersion:5
+      schemaVersion:6
     };
   }
   function stateFromCloud(localState, preferLocalSettings=false){
@@ -118,6 +119,7 @@ if(!configReady){
       accounts:Array.isArray(remoteSettings.accounts) ? remoteSettings.accounts : localSettings.accounts,
       periods:Array.isArray(remoteSettings.periods) ? remoteSettings.periods : localSettings.periods,
       budgetPlans:Array.isArray(remoteSettings.budgetPlans) ? remoteSettings.budgetPlans : localSettings.budgetPlans,
+      moneyPlans:Array.isArray(remoteSettings.moneyPlans) ? remoteSettings.moneyPlans : localSettings.moneyPlans,
       sync:remoteSettings.sync && typeof remoteSettings.sync === "object" ? remoteSettings.sync : localSettings.sync
     };
 
@@ -135,7 +137,8 @@ if(!configReady){
       accounts:deepClone(chosen.accounts || []),
       periods:deepClone(chosen.periods || []),
       budgetPlans:deepClone(chosen.budgetPlans || []),
-      sync:{...(deepClone(chosen.sync || {})), deletedTransactionIds:[...tombstones].slice(-2000), schemaVersion:5}
+      moneyPlans:deepClone(chosen.moneyPlans || []),
+      sync:{...(deepClone(chosen.sync || {})), deletedTransactionIds:[...tombstones].slice(-2000), schemaVersion:6}
     };
   }
 

@@ -1,6 +1,6 @@
 {
-  "name": "Money Tracker Cloud Sync",
-  "short_name": "Money Cloud",
+  "name": "Money Tracker Cloud Sync — Money Plan 50/30/20",
+  "short_name": "Money Plan",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f4f5f7",
@@ -19,6 +19,6 @@
       "purpose": "any maskable"
     }
   ],
-  "description": "Money tracker realtime saldo, budgeting, dan sinkronisasi MacBook-iPhone.",
+  "description": "Money tracker dengan cloud sync, saldo realtime, budgeting, dan Money Plan 50/30/20.",
   "scope": "./"
 }

@@ -4,10 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#111827" />
-  <title>Money Tracker Cloud Sync — v5.1</title>
+  <title>Money Tracker Cloud Sync — v6 Money Plan</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <script src="./firebase-config.js?v=20260715-51"></script>
+  <script src="./firebase-config.js?v=20260715-60"></script>
   <style>
     :root{
       --bg:#f4f5f7;
@@ -201,6 +201,26 @@
     .mini-bar-fill.actual{opacity:.82}
     .mini-bar-label{font-size:12px;font-weight:800}
     .mini-bar-value{font-size:12px;text-align:right;color:var(--muted);font-weight:800}
+
+
+    .money-plan-card{
+      background:
+        radial-gradient(circle at 10% 0%, rgba(37,99,235,.10), transparent 30%),
+        radial-gradient(circle at 90% 0%, rgba(5,150,105,.10), transparent 30%),
+        #fff;
+      border:1px solid #cbd5e1;
+    }
+    .money-plan-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+    .money-plan-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:14px}
+    @media(max-width:800px){.money-plan-grid{grid-template-columns:1fr}}
+    .money-plan-box{border:1px solid var(--border);border-radius:17px;padding:14px;background:rgba(255,255,255,.86)}
+    .money-plan-box .plan-label{font-size:11px;font-weight:900;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+    .money-plan-box .plan-value{font-size:22px;font-weight:950;margin:7px 0 5px}
+    .money-plan-box .plan-sub{font-size:12px;color:var(--muted)}
+    .money-plan-percent-total{font-weight:950}
+    .money-plan-percent-total.good{color:#166534}.money-plan-percent-total.bad{color:#991b1b}
+    .money-plan-actual-row{margin:13px 0}
+    .money-plan-actual-top{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:7px}
 
     .cloud-badge{
       display:inline-flex;align-items:center;gap:7px;padding:8px 11px;border-radius:999px;
@@ -422,7 +442,65 @@
   </section>
 
   <section id="budgeting" class="tab">
-    <div class="grid cols-2">
+    <div class="card money-plan-card">
+      <div class="money-plan-header">
+        <div>
+          <div class="mini">Money Plan periode aktif</div>
+          <h2 style="margin:4px 0 6px">Pembagian 50 / 30 / 20</h2>
+          <div class="hint">Needs 50% · Wants 30% · Saving & investasi 20%. Target nominal dihitung otomatis dari saldo yang mau kamu bagi.</div>
+        </div>
+        <span class="pill transfer" id="moneyPlanPeriodLabel">Periode belum dipilih</span>
+      </div>
+
+      <div class="row" style="margin-top:14px">
+        <div class="field col-4">
+          <label>Saldo yang Dibagi</label>
+          <input type="number" id="moneyPlanBase" placeholder="3822672" oninput="updateMoneyPlanPreview()" />
+        </div>
+        <div class="field col-4">
+          <label>Target Income</label>
+          <input type="number" id="moneyPlanIncomeGoal" placeholder="1256194" oninput="updateMoneyPlanPreview()" />
+        </div>
+        <div class="field col-4">
+          <label>Total Persentase</label>
+          <div class="notice" style="padding:10px 11px"><span id="moneyPlanPctTotal" class="money-plan-percent-total">100%</span> dari saldo yang dibagi</div>
+        </div>
+        <div class="field col-4">
+          <label>Needs (%)</label>
+          <input type="number" id="moneyPlanNeedsPct" value="50" min="0" max="100" step="0.1" oninput="updateMoneyPlanPreview()" />
+        </div>
+        <div class="field col-4">
+          <label>Wants (%)</label>
+          <input type="number" id="moneyPlanWantsPct" value="30" min="0" max="100" step="0.1" oninput="updateMoneyPlanPreview()" />
+        </div>
+        <div class="field col-4">
+          <label>Saving & Investasi (%)</label>
+          <input type="number" id="moneyPlanSavingPct" value="20" min="0" max="100" step="0.1" oninput="updateMoneyPlanPreview()" />
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="primary" onclick="saveMoneyPlan()">Simpan Money Plan</button>
+        <button class="soft" onclick="usePeriodStartBalanceForMoneyPlan()">Pakai Start Balance Periode</button>
+        <button class="soft" onclick="useCurrentTotalBalanceForMoneyPlan()">Pakai Total Saldo Sekarang</button>
+        <button class="soft" onclick="resetMoneyPlanPercentages()">Reset 50/30/20</button>
+      </div>
+
+      <div id="moneyPlanPreview" class="money-plan-grid"></div>
+
+      <div class="grid cols-2" style="margin-top:14px">
+        <div class="card" style="box-shadow:none">
+          <h3>Expected vs Actual</h3>
+          <div id="moneyPlanActualProgress"></div>
+        </div>
+        <div class="card" style="box-shadow:none">
+          <h3>Ringkasan Money Plan</h3>
+          <div id="moneyPlanSummary" class="table-wrap"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid cols-2" style="margin-top:14px">
       <div class="card">
         <h2>Setup Periode Budget</h2>
         <div class="row">
@@ -590,7 +668,7 @@
     <div class="card cloud-hero">
       <div class="section-title" style="margin-top:0">
         <div>
-          <div class="mini" style="color:rgba(255,255,255,.65)">Money Tracker v5.1</div>
+          <div class="mini" style="color:rgba(255,255,255,.65)">Money Tracker v6</div>
           <h2 style="margin:4px 0">Cloud Sync MacBook ↔ iPhone</h2>
           <div class="hint">Login dengan akun yang sama di dua device. Transaksi, saldo rekening, kategori, periode, dan budgeting akan ikut pindah.</div>
         </div>
@@ -654,7 +732,7 @@
     <div class="grid cols-2">
       <div class="card">
         <h2>Backup & Export</h2>
-        <div class="notice">Backup JSON menyimpan semua data: transaksi, kategori, rekening, periode, dan budget plan.</div>
+        <div class="notice">Backup JSON menyimpan semua data: transaksi, kategori, rekening, periode, budget plan, dan Money Plan 50/30/20.</div>
         <div class="actions" style="margin-top:14px">
           <button class="primary" onclick="downloadBackup()">Download Backup JSON</button>
           <button class="soft" onclick="exportTransactionsCSV()">Export Transaksi CSV</button>
@@ -683,7 +761,7 @@
   </section>
 </main>
 
-<div class="footer">Money Tracker Cloud Sync · Firebase Edition · v5</div>
+<div class="footer">Money Tracker Cloud Sync · Firebase Edition · v6 · Money Plan 50/30/20</div>
 <div id="toast" class="toast"></div>
 
 <script>
@@ -744,9 +822,10 @@ function normalizeState(data){
     id:uid("PER"), name:"Periode Gajian Aktif", start:se.start, end:se.end, startBalance:0, active:true
   }];
   clean.budgetPlans = Array.isArray(clean.budgetPlans) ? clean.budgetPlans : [];
+  clean.moneyPlans = Array.isArray(clean.moneyPlans) ? clean.moneyPlans : [];
   clean.sync = clean.sync && typeof clean.sync === "object" ? clean.sync : {};
   clean.sync.deletedTransactionIds = Array.isArray(clean.sync.deletedTransactionIds) ? clean.sync.deletedTransactionIds : [];
-  clean.sync.schemaVersion = 5;
+  clean.sync.schemaVersion = 6;
   return clean;
 }
 
@@ -808,7 +887,8 @@ function loadState(){
       startBalance:0,
       active:true
     }],
-    budgetPlans:[]
+    budgetPlans:[],
+    moneyPlans:[]
   };
 }
 let state = normalizeState(loadState());
@@ -1143,7 +1223,7 @@ function getBudgetPlansForPeriod(periodId){
 function budgetStatus(group, budget, actual){
   budget = number(budget); actual = number(actual);
   if(!budget && actual) return {text:"No Budget", cls:"warn", pct:100};
-  if(group==="Income"){
+  if(group==="Income" || group==="Saving"){
     if(actual >= budget) return {text:"Goal Achieved", cls:"good", pct:budget?Math.min(100, actual/budget*100):100};
     return {text:"On Track", cls:"warn", pct:budget?Math.min(100, actual/budget*100):0};
   }
@@ -1222,7 +1302,7 @@ function visualSummaryTable(group, plans, actualCat){
   </table>`;
 }
 function renderVisualDashboard(period, groups, plans){
-  const budgetGroup = sumBudgetByGroup(plans);
+  const budgetGroup = effectiveBudgetByGroup(period, plans);
   const actualCat = actualByCategory(period);
   const expenseActual = number(groups.Needs)+number(groups.Wants)+number(groups.Debt)+number(groups.Saving);
   const expenseBudget = number(budgetGroup.Needs)+number(budgetGroup.Wants)+number(budgetGroup.Debt)+number(budgetGroup.Saving);
@@ -1308,8 +1388,7 @@ function renderDashboard(){
 
   const plans = getBudgetPlansForPeriod(period?.id);
   renderVisualDashboard(period, groups, plans);
-  const budgetByGroup = {};
-  plans.forEach(p => budgetByGroup[p.group] = number(budgetByGroup[p.group]) + number(p.amount));
+  const budgetByGroup = effectiveBudgetByGroup(period, plans);
   const rows = ["Income","Needs","Wants","Debt","Saving"].map(g=>{
     const actual = number(groups[g]);
     const budget = number(budgetByGroup[g]);
@@ -1352,6 +1431,147 @@ function renderDashboard(){
     `).join("");
   }
 }
+
+function getMoneyPlanForPeriod(periodId){
+  if(!periodId) return null;
+  return state.moneyPlans.find(p=>p.periodId===periodId) || null;
+}
+function moneyPlanTargets(plan){
+  const base = number(plan?.baseAmount);
+  return {
+    Income:number(plan?.incomeGoal),
+    Needs:base * number(plan?.needsPct) / 100,
+    Wants:base * number(plan?.wantsPct) / 100,
+    Debt:0,
+    Saving:base * number(plan?.savingPct) / 100
+  };
+}
+function getMoneyPlanDraft(){
+  return {
+    baseAmount:number(document.getElementById("moneyPlanBase")?.value),
+    incomeGoal:number(document.getElementById("moneyPlanIncomeGoal")?.value),
+    needsPct:number(document.getElementById("moneyPlanNeedsPct")?.value),
+    wantsPct:number(document.getElementById("moneyPlanWantsPct")?.value),
+    savingPct:number(document.getElementById("moneyPlanSavingPct")?.value)
+  };
+}
+function effectiveBudgetByGroup(period, plans){
+  const fromCategories = sumBudgetByGroup(plans || []);
+  const moneyPlan = getMoneyPlanForPeriod(period?.id);
+  if(!moneyPlan) return fromCategories;
+  const target = moneyPlanTargets(moneyPlan);
+  return {
+    Income:number(target.Income) || number(fromCategories.Income),
+    Needs:number(target.Needs),
+    Wants:number(target.Wants),
+    Debt:number(fromCategories.Debt),
+    Saving:number(target.Saving)
+  };
+}
+function updateMoneyPlanPreview(){
+  const container = document.getElementById("moneyPlanPreview");
+  if(!container) return;
+  const draft = getMoneyPlanDraft();
+  const target = moneyPlanTargets(draft);
+  const totalPct = number(draft.needsPct)+number(draft.wantsPct)+number(draft.savingPct);
+  const totalEl = document.getElementById("moneyPlanPctTotal");
+  if(totalEl){
+    totalEl.textContent = totalPct.toLocaleString("id-ID",{maximumFractionDigits:1}) + "%";
+    totalEl.className = "money-plan-percent-total " + (Math.abs(totalPct-100)<0.001 ? "good" : "bad");
+  }
+  container.innerHTML = [
+    {name:"Needs",pct:draft.needsPct,value:target.Needs,desc:"Kebutuhan utama dan wajib"},
+    {name:"Wants",pct:draft.wantsPct,value:target.Wants,desc:"Keinginan dan gaya hidup"},
+    {name:"Saving",pct:draft.savingPct,value:target.Saving,desc:"Tabungan dan investasi"}
+  ].map(x=>`<div class="money-plan-box">
+    <span class="pill ${x.name.toLowerCase()}">${x.name} ${number(x.pct).toLocaleString("id-ID",{maximumFractionDigits:1})}%</span>
+    <div class="plan-value">${rupiah(x.value)}</div>
+    <div class="plan-sub">${x.desc}</div>
+  </div>`).join("");
+}
+function renderMoneyPlan(){
+  const period = getActivePeriod();
+  const saved = getMoneyPlanForPeriod(period?.id);
+  const fallback = {
+    baseAmount:number(period?.startBalance),
+    incomeGoal:0,
+    needsPct:50,
+    wantsPct:30,
+    savingPct:20
+  };
+  const plan = saved || fallback;
+  const label = document.getElementById("moneyPlanPeriodLabel");
+  if(label) label.textContent = period ? `${period.name} · ${period.start}–${period.end}` : "Periode belum dipilih";
+  document.getElementById("moneyPlanBase").value = number(plan.baseAmount) || "";
+  document.getElementById("moneyPlanIncomeGoal").value = number(plan.incomeGoal) || "";
+  document.getElementById("moneyPlanNeedsPct").value = number(plan.needsPct);
+  document.getElementById("moneyPlanWantsPct").value = number(plan.wantsPct);
+  document.getElementById("moneyPlanSavingPct").value = number(plan.savingPct);
+  updateMoneyPlanPreview();
+
+  const target = moneyPlanTargets(plan);
+  const actual = actualByGroup(period);
+  const items = [
+    {name:"Income",target:target.Income,actual:actual.Income},
+    {name:"Needs",target:target.Needs,actual:actual.Needs},
+    {name:"Wants",target:target.Wants,actual:actual.Wants},
+    {name:"Saving",target:target.Saving,actual:actual.Saving},
+    {name:"Debt",target:0,actual:actual.Debt}
+  ];
+  document.getElementById("moneyPlanActualProgress").innerHTML = items.map(x=>{
+    const pct = x.target ? x.actual/x.target*100 : (x.actual ? 100 : 0);
+    const st = x.name==="Debt"
+      ? (x.actual>0 ? {cls:"warn",text:"Dipantau terpisah"} : {cls:"good",text:"Tidak ada"})
+      : budgetStatus(x.name,x.target,x.actual);
+    return `<div class="money-plan-actual-row">
+      <div class="money-plan-actual-top"><b>${x.name}</b><span class="mini">${rupiah(x.actual)} / ${rupiah(x.target)} · <span class="status-${st.cls}">${x.target ? Math.round(pct)+"%" : st.text}</span></span></div>
+      <div class="progress"><div class="bar ${st.cls}" style="width:${Math.min(100,Math.max(0,pct))}%"></div></div>
+    </div>`;
+  }).join("");
+
+  const remainingNeeds = number(target.Needs)-number(actual.Needs);
+  const remainingWants = number(target.Wants)-number(actual.Wants);
+  const remainingSaving = number(target.Saving)-number(actual.Saving);
+  document.getElementById("moneyPlanSummary").innerHTML = `<table>
+    <tr><th>Pos</th><th class="right">Target</th><th class="right">Actual</th><th class="right">Sisa</th></tr>
+    <tr><td>Needs</td><td class="right">${rupiah(target.Needs)}</td><td class="right">${rupiah(actual.Needs)}</td><td class="right">${rupiah(remainingNeeds)}</td></tr>
+    <tr><td>Wants</td><td class="right">${rupiah(target.Wants)}</td><td class="right">${rupiah(actual.Wants)}</td><td class="right">${rupiah(remainingWants)}</td></tr>
+    <tr><td>Saving</td><td class="right">${rupiah(target.Saving)}</td><td class="right">${rupiah(actual.Saving)}</td><td class="right">${rupiah(remainingSaving)}</td></tr>
+    <tr><td><b>Total 50/30/20</b></td><td class="right"><b>${rupiah(target.Needs+target.Wants+target.Saving)}</b></td><td class="right"><b>${rupiah(actual.Needs+actual.Wants+actual.Saving)}</b></td><td class="right"><b>${rupiah(remainingNeeds+remainingWants+remainingSaving)}</b></td></tr>
+  </table>`;
+}
+function saveMoneyPlan(){
+  const period = getActivePeriod();
+  if(!period){ showToast("Buat periode aktif dulu ya."); return; }
+  const draft = getMoneyPlanDraft();
+  const totalPct = draft.needsPct+draft.wantsPct+draft.savingPct;
+  if(draft.baseAmount < 0 || draft.incomeGoal < 0){ showToast("Nominal tidak boleh minus."); return; }
+  if(Math.abs(totalPct-100)>0.001){ showToast("Needs + Wants + Saving harus pas 100%."); return; }
+  let plan = getMoneyPlanForPeriod(period.id);
+  const data = {periodId:period.id,...draft,updatedAt:Date.now()};
+  if(plan) Object.assign(plan,data); else state.moneyPlans.push(data);
+  saveState();
+  renderAll();
+  showToast("Money Plan 50/30/20 berhasil disimpan.");
+}
+function usePeriodStartBalanceForMoneyPlan(){
+  const period = getActivePeriod();
+  document.getElementById("moneyPlanBase").value = number(period?.startBalance) || "";
+  updateMoneyPlanPreview();
+}
+function useCurrentTotalBalanceForMoneyPlan(){
+  const data = computeAccountBalancesRealtime();
+  const total = state.accounts.reduce((sum,a)=>sum+number(data.balances[a.name]),0);
+  document.getElementById("moneyPlanBase").value = total || "";
+  updateMoneyPlanPreview();
+}
+function resetMoneyPlanPercentages(){
+  document.getElementById("moneyPlanNeedsPct").value = 50;
+  document.getElementById("moneyPlanWantsPct").value = 30;
+  document.getElementById("moneyPlanSavingPct").value = 20;
+  updateMoneyPlanPreview();
+}
+
 function renderPeriodOptions(){
   const active = getActivePeriod();
   const opts = state.periods.map(p=>`<option value="${p.id}" ${p.active?"selected":""}>${p.name} · ${p.start}–${p.end}</option>`).join("");
@@ -1361,6 +1581,7 @@ function renderPeriodOptions(){
 }
 function renderBudgeting(){
   const period = getActivePeriod();
+  renderMoneyPlan();
   const actualCat = actualByCategory(period);
   const plans = getBudgetPlansForPeriod(period?.id);
 
@@ -1737,12 +1958,12 @@ renderAll();
 
 if("serviceWorker" in navigator){
   window.addEventListener("load", ()=>{
-    navigator.serviceWorker.register("./sw.js?v=20260715-51", {updateViaCache:"none"})
+    navigator.serviceWorker.register("./sw.js?v=20260715-60", {updateViaCache:"none"})
       .then(registration => registration.update())
       .catch(()=>{});
   });
 }
 </script>
-<script type="module" src="./cloud-sync.js?v=20260715-51"></script>
+<script type="module" src="./cloud-sync.js?v=20260715-60"></script>
 </body>
 </html>
