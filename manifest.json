@@ -1,5 +1,5 @@
 {
-  "name": "Money Tracker — Persentase Money Plan Fleksibel",
+  "name": "Money Tracker — Merge Import Sheets",
   "short_name": "Money Tracker",
   "start_url": "./index.html",
   "display": "standalone",
@@ -19,6 +19,6 @@
       "purpose": "any maskable"
     }
   ],
-  "description": "Money tracker cloud sync dengan persentase Needs, Wants, dan Saving yang dapat diatur sederhana, Debt motor di dalam porsi Needs, serta Expected vs Actual.",
+  "description": "Money tracker cloud sync dengan import laporan Sheets secara merge, deteksi transaksi duplikat, dan Money Plan persentase fleksibel.",
   "scope": "./"
 }
