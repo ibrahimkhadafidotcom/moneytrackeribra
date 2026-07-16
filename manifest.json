@@ -1,5 +1,5 @@
 {
-  "name": "Money Tracker — Saving Summary",
+  "name": "Money Tracker — Edit Transaction",
   "short_name": "Money Tracker",
   "start_url": "./index.html",
   "display": "standalone",
@@ -19,6 +19,6 @@
       "purpose": "any maskable"
     }
   ],
-  "description": "Money tracker cloud sync dengan tabel Saving Summary rinci, Expected vs Actual, periode budgeting, dan import merge laporan.",
+  "description": "Money tracker cloud sync dengan fitur edit transaksi, saldo realtime, budgeting fleksibel, dan Expected vs Actual.",
   "scope": "./"
 }
