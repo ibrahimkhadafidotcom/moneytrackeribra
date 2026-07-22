@@ -1,10 +1,10 @@
-const CACHE_NAME = "money-tracker-cloud-sync-v7-4-category-budget-health-20260723-74";
+const CACHE_NAME = "money-tracker-cloud-sync-v7-5-core-budget-categories-20260723-75";
 
 const APP_SHELL = [
   "./",
-  "./index.html?v=20260723-74",
-  "./manifest.json?v=20260723-74",
-  "./cloud-sync.js?v=20260723-74",
+  "./index.html?v=20260723-75",
+  "./manifest.json?v=20260723-75",
+  "./cloud-sync.js?v=20260723-75",
   "./icon-192.png",
   "./icon-512.png"
 ];
@@ -54,7 +54,7 @@ self.addEventListener("fetch", event => {
       .catch(() =>
         caches.match(event.request).then(response =>
           response ||
-          caches.match("./index.html?v=20260723-74")
+          caches.match("./index.html?v=20260723-75")
         )
       )
   );
