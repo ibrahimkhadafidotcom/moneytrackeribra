@@ -4,10 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#111827" />
-  <title>Money Tracker Cloud Sync — v7.3 Auto Budget</title>
+  <title>Money Tracker Cloud Sync — v7.5 Core Budget Categories</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <script src="./firebase-config.js?v=20260723-73"></script>
+  <script src="./firebase-config.js?v=20260723-75"></script>
   <style>
     :root{
       --bg:#f4f5f7;
@@ -593,9 +593,9 @@
         <div id="visualActualVsBudgetBars"></div>
       </div>
       <div class="card">
-        <h2>Budget Planning per Kategori</h2>
+        <h2>Budget Planning per Kategori Inti</h2>
         <div class="hint" style="margin-bottom:10px">
-          Bandingkan Expected dan Actual untuk melihat kategori yang surplus, defisit, atau balance.
+          Hanya menghitung Income, Debts, Saving, Wants, dan Needs. Transfer serta kategori lain tidak disertakan.
         </div>
         <div id="categoryBudgetHealthSummary" class="actions" style="margin-bottom:10px"></div>
         <div id="categoryBudgetHealth" class="table-wrap"></div>
@@ -1825,35 +1825,32 @@ function categoryPlanningResult(group, expected, actual){
   return {text:"Balance", cls:"warn", difference:0};
 }
 
-function renderCategoryBudgetHealth(period, plans, actualCat){
+function renderCategoryBudgetHealth(period, plans){
   const target = document.getElementById("categoryBudgetHealth");
   const summary = document.getElementById("categoryBudgetHealthSummary");
   if(!target || !summary) return;
 
-  const categories = [];
-  const seen = new Set();
+  const actualByCoreGroup = actualByGroup(period);
 
-  (Array.isArray(state.categories) ? state.categories : []).forEach(master => {
-    if(master.group === "Transfer" || master.type === "Transfer") return;
-    const key = norm(master.name);
-    if(!key || seen.has(key)) return;
-    seen.add(key);
-    categories.push({name:master.name, group:master.group});
-  });
+  const expectedByCoreGroup = plans.reduce((totals,plan) => {
+    const group = plan.group === "Debts" ? "Debt" : plan.group;
+    if(["Income","Debt","Saving","Wants","Needs"].includes(group)){
+      totals[group] = number(totals[group]) + number(plan.amount);
+    }
+    return totals;
+  },{Income:0,Debt:0,Saving:0,Wants:0,Needs:0});
 
-  plans.forEach(plan => {
-    if(plan.group === "Transfer") return;
-    const key = norm(plan.category);
-    if(!key || seen.has(key)) return;
-    seen.add(key);
-    categories.push({name:plan.category, group:plan.group});
-  });
+  const coreCategories = [
+    {name:"Income", group:"Income", expected:expectedByCoreGroup.Income, actual:actualByCoreGroup.Income},
+    {name:"Debts", group:"Debt", expected:expectedByCoreGroup.Debt, actual:actualByCoreGroup.Debt},
+    {name:"Saving", group:"Saving", expected:expectedByCoreGroup.Saving, actual:actualByCoreGroup.Saving},
+    {name:"Wants", group:"Wants", expected:expectedByCoreGroup.Wants, actual:actualByCoreGroup.Wants},
+    {name:"Needs", group:"Needs", expected:expectedByCoreGroup.Needs, actual:actualByCoreGroup.Needs}
+  ];
 
-  const results = categories.map(category => {
-    const expected = plans
-      .filter(plan => norm(plan.category) === norm(category.name))
-      .reduce((total,plan) => total + number(plan.amount),0);
-    const actual = actualForMasterCategory(actualCat,category.name);
+  const results = coreCategories.map(category => {
+    const expected = number(category.expected);
+    const actual = number(category.actual);
     const result = categoryPlanningResult(category.group,expected,actual);
     return {...category, expected, actual, ...result};
   });
@@ -1870,15 +1867,9 @@ function renderCategoryBudgetHealth(period, plans, actualCat){
     <span class="pill transfer">Belum Diisi: ${emptyCount}</span>
   `;
 
-  if(!results.length){
-    target.innerHTML = `<div class="empty">Belum ada Master Kategori untuk dibandingkan.</div>`;
-    return;
-  }
-
   target.innerHTML = `<table>
     <tr>
       <th>Kategori</th>
-      <th>Group</th>
       <th class="right">Expected</th>
       <th class="right">Actual</th>
       <th class="right">Selisih</th>
@@ -1886,7 +1877,6 @@ function renderCategoryBudgetHealth(period, plans, actualCat){
     </tr>
     ${results.map(item => `<tr>
       <td><b>${item.name}</b></td>
-      <td><span class="pill ${String(item.group || "").toLowerCase()}">${item.group}</span></td>
       <td class="right">${rupiah(item.expected)}</td>
       <td class="right">${rupiah(item.actual)}</td>
       <td class="right">${rupiah(Math.abs(item.difference))}</td>
@@ -1992,7 +1982,7 @@ function renderVisualDashboard(period, groups, plans){
     </div>`;
   }).join("");
 
-  renderCategoryBudgetHealth(period,plans,actualCat);
+  renderCategoryBudgetHealth(period,plans);
 
   document.getElementById("visualNeeds").innerHTML =
     visualSummaryTable("Needs",plans,actualCat);
@@ -4221,6 +4211,6 @@ if("serviceWorker" in navigator){
   });
 }
 </script>
-<script type="module" src="./cloud-sync.js?v=20260723-73"></script>
+<script type="module" src="./cloud-sync.js?v=20260723-75"></script>
 </body>
 </html>
