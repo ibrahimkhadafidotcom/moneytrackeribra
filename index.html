@@ -4,10 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#111827" />
-  <title>Money Tracker Cloud Sync — v7.2 Quick Budget</title>
+  <title>Money Tracker Cloud Sync — v7.3 Auto Budget</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <script src="./firebase-config.js?v=20260723-72"></script>
+  <script src="./firebase-config.js?v=20260723-73"></script>
   <style>
     :root{
       --bg:#f4f5f7;
@@ -629,7 +629,9 @@
       <div class="section-title" style="margin-top:0">
         <div>
           <h2>Semua Master & Status Budgeting</h2>
-          <div class="hint">Seluruh Master Kategori selalu tampil. Status mengikuti budgeting pada periode aktif.</div>
+          <div class="hint">
+            Seluruh Master Kategori selalu tampil. Tabungan otomatis 20% dan Sedekah otomatis 2,5% dari actual Gaji Bulanan, Freelance, Bonus, dan Penjualan periode aktif.
+          </div>
         </div>
         <div id="masterBudgetStatusSummary" class="actions"></div>
       </div>
@@ -1006,7 +1008,7 @@
     <div class="card cloud-hero">
       <div class="section-title" style="margin-top:0">
         <div>
-          <div class="mini" style="color:rgba(255,255,255,.65)">Money Tracker v7.2</div>
+          <div class="mini" style="color:rgba(255,255,255,.65)">Money Tracker v7.3</div>
           <h2 style="margin:4px 0">Cloud Sync MacBook ↔ iPhone</h2>
           <div class="hint">Login dengan akun yang sama di dua device. Transaksi, saldo rekening, kategori, periode, dan budgeting akan ikut pindah.</div>
         </div>
@@ -1102,7 +1104,7 @@
   </section>
 </main>
 
-<div class="footer">Money Tracker Cloud Sync · Firebase Edition · v7.2 · Quick Budget Dashboard</div>
+<div class="footer">Money Tracker Cloud Sync · Firebase Edition · v7.3 · Auto Budget dari Actual Income</div>
 <div id="toast" class="toast"></div>
 
 <script>
@@ -1130,9 +1132,34 @@ const defaultCategories = [
   {type:"Pengeluaran", group:"Debt", name:"Piutang", aliases:"piutang"},
   {type:"Pengeluaran", group:"Debt", name:"Bayar Hutang", aliases:"bayar hutang,cicilan hutang"},
   {type:"Pengeluaran", group:"Debt", name:"Cicilan Motor", aliases:"cicilan motor,motor"},
+  {type:"Pengeluaran", group:"Saving", name:"Tabungan", aliases:"tabungan,saving,menabung"},
   {type:"Pengeluaran", group:"Saving", name:"Dana Mendesak", aliases:"dana mendesak,mendesak,darurat"},
   {type:"Pengeluaran", group:"Wants", name:"Sedekah", aliases:"sedekah,ngasih"},
   {type:"Transfer", group:"Transfer", name:"Pindah Rekening", aliases:"transfer,pindah rekening,pindah"}
+];
+
+const AUTOMATIC_BUDGET_INCOME_CATEGORIES = [
+  "Gaji Bulanan",
+  "Freelance",
+  "Bonus",
+  "Penjualan"
+];
+
+const AUTOMATIC_BUDGET_RULES = [
+  {
+    category:"Tabungan",
+    type:"Pengeluaran",
+    group:"Saving",
+    rate:20,
+    aliases:"tabungan,saving,menabung"
+  },
+  {
+    category:"Sedekah",
+    type:"Pengeluaran",
+    group:"Wants",
+    rate:2.5,
+    aliases:"sedekah,ngasih"
+  }
 ];
 
 const defaultAccounts = [
@@ -1595,6 +1622,103 @@ function actualByGroup(period){
 function getBudgetPlansForPeriod(periodId){
   return state.budgetPlans.filter(b=>b.periodId===periodId);
 }
+
+function getAutomaticBudgetRule(categoryName){
+  return AUTOMATIC_BUDGET_RULES.find(rule =>
+    norm(rule.category) === norm(categoryName)
+  ) || null;
+}
+
+function automaticBudgetIncome(period){
+  if(!period) return 0;
+
+  const includedCategories = new Set(
+    AUTOMATIC_BUDGET_INCOME_CATEGORIES.map(category => norm(category))
+  );
+
+  return state.transactions
+    .filter(tx =>
+      tx.type === "Pemasukan" &&
+      includedCategories.has(norm(tx.category)) &&
+      isInPeriod(tx,period)
+    )
+    .reduce((total,tx) => total + number(tx.amount),0);
+}
+
+function ensureAutomaticBudgetMasters(){
+  let changed = false;
+
+  for(const rule of AUTOMATIC_BUDGET_RULES){
+    const exists = state.categories.some(category =>
+      norm(category.name) === norm(rule.category)
+    );
+
+    if(!exists){
+      state.categories.push({
+        type:rule.type,
+        group:rule.group,
+        name:rule.category,
+        aliases:rule.aliases
+      });
+      changed = true;
+    }
+  }
+
+  return changed;
+}
+
+function syncAutomaticBudgetPlans(period){
+  let changed = ensureAutomaticBudgetMasters();
+  if(!period) return changed;
+
+  const income = automaticBudgetIncome(period);
+
+  for(const rule of AUTOMATIC_BUDGET_RULES){
+    const calculatedAmount = Math.round(income * rule.rate / 100);
+    const matchingPlans = state.budgetPlans.filter(plan =>
+      plan.periodId === period.id &&
+      norm(plan.category) === norm(rule.category)
+    );
+    const plan = matchingPlans[0];
+    const desired = {
+      periodId:period.id,
+      group:rule.group,
+      category:rule.category,
+      amount:calculatedAmount,
+      calculationMode:"actualIncomePercentage",
+      autoRate:rule.rate,
+      sourceIncomeAmount:income
+    };
+
+    if(plan){
+      for(const [key,value] of Object.entries(desired)){
+        if(plan[key] !== value){
+          plan[key] = value;
+          changed = true;
+        }
+      }
+
+      if(matchingPlans.length > 1){
+        const primaryId = plan.id;
+        state.budgetPlans = state.budgetPlans.filter(candidate =>
+          candidate.id === primaryId ||
+          candidate.periodId !== period.id ||
+          norm(candidate.category) !== norm(rule.category)
+        );
+        changed = true;
+      }
+    }else{
+      state.budgetPlans.push({
+        id:uid("BUD"),
+        ...desired
+      });
+      changed = true;
+    }
+  }
+
+  return changed;
+}
+
 function budgetStatus(group, budget, actual){
   budget = number(budget); actual = number(actual);
   if(!budget && actual) return {text:"No Budget", cls:"warn", pct:100};
@@ -1894,6 +2018,7 @@ function renderMasterBudgetStatus(period,plans){
       0
     );
     const isTransfer = master.group === "Transfer" || master.type === "Transfer";
+    const automaticRule = getAutomaticBudgetRule(master.name);
     const isFilled = !isTransfer && expected > 0;
     const statusText = isTransfer
       ? "Tidak Perlu Budget"
@@ -1908,6 +2033,7 @@ function renderMasterBudgetStatus(period,plans){
       expected,
       actual,
       isTransfer,
+      automaticRule,
       isFilled,
       html:`<tr>
         <td>${master.type}</td>
@@ -1919,9 +2045,11 @@ function renderMasterBudgetStatus(period,plans){
         <td class="quick-budget-action">
           ${isTransfer
             ? `<span class="muted">Tidak diperlukan</span>`
-            : `<button class="${isFilled ? "soft" : "primary"}" type="button" onclick="openQuickBudget(${masterIndex})">
-                ${isFilled ? "Ubah Budget" : "+ Isi Budget"}
-              </button>`
+            : automaticRule
+              ? `<span class="pill saving">Otomatis ${automaticRule.rate}%</span>`
+              : `<button class="${isFilled ? "soft" : "primary"}" type="button" onclick="openQuickBudget(${masterIndex})">
+                  ${isFilled ? "Ubah Budget" : "+ Isi Budget"}
+                </button>`
           }
         </td>
       </tr>`
@@ -1973,6 +2101,14 @@ function openQuickBudget(masterIndex){
 
   if(master.group === "Transfer" || master.type === "Transfer"){
     showToast("Kategori Transfer tidak memerlukan budget.");
+    return;
+  }
+
+  const automaticRule = getAutomaticBudgetRule(master.name);
+  if(automaticRule){
+    showToast(
+      `Budget ${master.name} otomatis ${automaticRule.rate}% dari actual income periode aktif.`
+    );
     return;
   }
 
@@ -3101,6 +3237,7 @@ function renderBudgeting(){
     const difference = group === "Income"
       ? actual-expected
       : expected-actual;
+    const automaticRule = getAutomaticBudgetRule(category);
 
     return `<tr>
       <td>
@@ -3112,9 +3249,12 @@ function renderBudgeting(){
       <td class="right">${rupiah(difference)}</td>
       <td class="status-${status.cls}">${status.text}</td>
       <td>
-        <button class="danger" onclick="deleteBudgetPlan('${plan.id}')">
-          Hapus
-        </button>
+        ${automaticRule
+          ? `<span class="pill saving">Otomatis ${automaticRule.rate}%</span>`
+          : `<button class="danger" onclick="deleteBudgetPlan('${plan.id}')">
+              Hapus
+            </button>`
+        }
       </td>
     </tr>`;
   }).join("");
@@ -3165,6 +3305,12 @@ function saveBudgetPlan(){
   const category = document.getElementById("budgetCategory").value;
   const amount = number(document.getElementById("budgetAmount").value);
   if(!periodId || !category || !amount){ showToast("Periode, kategori, dan nominal budget wajib diisi."); return; }
+  const automaticRule = getAutomaticBudgetRule(category);
+  if(automaticRule){
+    showToast(`Budget ${category} dihitung otomatis ${automaticRule.rate}% dari actual income.`);
+    renderAll();
+    return;
+  }
   const existing = state.budgetPlans.find(b=>b.periodId===periodId && norm(b.category)===norm(category));
   if(existing){
     existing.group = group; existing.amount = amount;
@@ -3506,7 +3652,9 @@ function refreshManualCategoryOptions(){
 }
 function refreshBudgetCategoryOptions(){
   const group = document.getElementById("budgetGroup").value;
-  const cats = state.categories.filter(c=>c.group===group);
+  const cats = state.categories.filter(c =>
+    c.group === group && !getAutomaticBudgetRule(c.name)
+  );
   document.getElementById("budgetCategory").innerHTML = cats.map(c=>`<option>${c.name}</option>`).join("");
 }
 
@@ -4012,6 +4160,8 @@ window.addEventListener("online", ()=>window.MoneyCloud?.syncNow?.(state).catch(
 
 function renderAll(){
   state = normalizeState(state);
+  const automaticBudgetChanged = syncAutomaticBudgetPlans(getActivePeriod());
+  if(automaticBudgetChanged) saveState();
   refreshAccountOptions();
   refreshManualCategoryOptions();
   refreshBudgetCategoryOptions();
@@ -4038,12 +4188,12 @@ renderAll();
 
 if("serviceWorker" in navigator){
   window.addEventListener("load", ()=>{
-    navigator.serviceWorker.register("./sw.js?v=20260723-72", {updateViaCache:"none"})
+    navigator.serviceWorker.register("./sw.js?v=20260723-73", {updateViaCache:"none"})
       .then(registration => registration.update())
       .catch(()=>{});
   });
 }
 </script>
-<script type="module" src="./cloud-sync.js?v=20260723-72"></script>
+<script type="module" src="./cloud-sync.js?v=20260723-73"></script>
 </body>
 </html>
