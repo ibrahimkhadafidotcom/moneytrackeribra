@@ -1855,12 +1855,27 @@ function renderCategoryBudgetHealth(period, plans){
     return {...category, expected, actual, ...result};
   });
 
-  const totals = results.reduce((total,item) => {
-    total.expected += item.expected;
-    total.actual += item.actual;
-    return total;
-  },{expected:0,actual:0});
-  totals.difference = totals.expected - totals.actual;
+  const incomeTotal = results.find(item => item.group === "Income") || {expected:0,actual:0};
+  const outgoingTotals = results
+    .filter(item => item.group !== "Income")
+    .reduce((total,item) => {
+      total.expected += item.expected;
+      total.actual += item.actual;
+      return total;
+    },{expected:0,actual:0});
+  const totals = {
+    expected:incomeTotal.expected - outgoingTotals.expected,
+    actual:incomeTotal.actual - outgoingTotals.actual
+  };
+  totals.difference = totals.actual - totals.expected;
+  const totalStatus = totals.actual > 0
+    ? {text:"Surplus",cls:"good"}
+    : totals.actual < 0
+      ? {text:"Defisit",cls:"bad"}
+      : {text:"Balance",cls:"warn"};
+  const signedRupiah = value => value < 0
+    ? `-${rupiah(Math.abs(value))}`
+    : rupiah(value);
 
   const surplusCount = results.filter(item => item.text === "Surplus").length;
   const deficitCount = results.filter(item => item.text === "Defisit").length;
@@ -1891,10 +1906,10 @@ function renderCategoryBudgetHealth(period, plans){
     </tr>`).join("")}
     <tr style="border-top:2px solid var(--border)">
       <td><b>Total</b></td>
-      <td class="right"><b>${rupiah(totals.expected)}</b></td>
-      <td class="right"><b>${rupiah(totals.actual)}</b></td>
-      <td class="right"><b>${rupiah(Math.abs(totals.difference))}</b></td>
-      <td><b>5 Kategori</b></td>
+      <td class="right"><b>${signedRupiah(totals.expected)}</b></td>
+      <td class="right"><b>${signedRupiah(totals.actual)}</b></td>
+      <td class="right"><b>${signedRupiah(totals.difference)}</b></td>
+      <td class="status-${totalStatus.cls}"><b>${totalStatus.text}</b></td>
     </tr>
   </table>`;
 }
