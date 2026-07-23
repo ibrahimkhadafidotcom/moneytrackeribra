@@ -123,6 +123,11 @@
     th,td{padding:10px;border-bottom:1px solid var(--border);text-align:left;font-size:13px;vertical-align:top}
     th{color:#374151;background:#f9fafb;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
     tr:last-child td{border-bottom:0}
+    .summary-total-row td{
+      background:#f3f4f6;
+      border-top:2px solid #d1d5db;
+      font-weight:900;
+    }
     .table-wrap{overflow:auto;border:1px solid var(--border);border-radius:16px;background:#fff}
     .right{text-align:right}
     .muted{color:var(--muted)}
@@ -1108,7 +1113,7 @@
   </section>
 </main>
 
-<div class="footer">Money Tracker Cloud Sync · Firebase Edition · v7.3 · Auto Budget dari Actual Income</div>
+<div class="footer">Money Tracker Cloud Sync · Firebase Edition · v7.9 · Total Summary Dashboard</div>
 <div id="toast" class="toast"></div>
 
 <script>
@@ -1853,7 +1858,8 @@ function donutSVG(items){
   </div>`;
 }
 function visualSummaryTable(group, plans, actualCat){
-  const rows = plans.filter(p=>p.group===group).map(p=>{
+  const visiblePlans = plans.filter(p=>p.group===group);
+  const rows = visiblePlans.map(p=>{
     const actual = number(actualCat[p.category]);
     const st = budgetStatus(p.group, p.amount, actual);
     const diff = group==="Income" ? actual-number(p.amount) : number(p.amount)-actual;
@@ -1867,9 +1873,31 @@ function visualSummaryTable(group, plans, actualCat){
     </tr>`;
   }).join("");
   if(!rows) return `<div class="empty">Belum ada budget ${group}.</div>`;
+
+  const totalExpected = visiblePlans.reduce(
+    (total,p)=>total+number(p.amount),
+    0
+  );
+  const totalActual = visiblePlans.reduce(
+    (total,p)=>total+number(actualCat[p.category]),
+    0
+  );
+  const totalDiff = group==="Income"
+    ? totalActual-totalExpected
+    : totalExpected-totalActual;
+  const totalStatus = budgetStatus(group,totalExpected,totalActual);
+
   return `<table>
     <tr><th>Category</th><th class="right">Expected</th><th class="right">Actual</th><th class="right">%</th><th class="right">Selisih</th><th>Status</th></tr>
     ${rows}
+    <tr class="summary-total-row">
+      <td>Total</td>
+      <td class="right">${rupiah(totalExpected)}</td>
+      <td class="right">${rupiah(totalActual)}</td>
+      <td class="right">${percentText(totalActual,totalExpected)}</td>
+      <td class="right">${rupiah(totalDiff)}</td>
+      <td class="status-${totalStatus.cls}">${totalStatus.text}</td>
+    </tr>
   </table>`;
 }
 
@@ -2572,36 +2600,42 @@ function renderDebtVisualSummary(period,plans){
   const actualCategories = actualDebtByCategory(period);
   const debtPlans = plans.filter(plan => plan.group === "Debt");
 
-  let rows = debtPlans.map(plan => {
-    const actual = number(actualCategories[plan.category]);
-    const status = debtPaymentStatus(plan.amount,actual);
+  let displayedDebts = debtPlans.map(plan => ({
+    category:plan.category,
+    expected:number(plan.amount),
+    actual:number(actualCategories[plan.category])
+  }));
+
+  if(!displayedDebts.length){
+    displayedDebts = [{
+      category:"Cicilan Motor",
+      expected:number(debtExpected["Cicilan Motor"]),
+      actual:number(actualCategories["Cicilan Motor"])
+    }];
+  }
+
+  const rows = displayedDebts.map(item => {
+    const status = debtPaymentStatus(item.expected,item.actual);
 
     return `<tr>
-      <td>${plan.category}</td>
-      <td class="right">${rupiah(plan.amount)}</td>
-      <td class="right">${rupiah(actual)}</td>
-      <td class="right">${percentText(actual,plan.amount)}</td>
-      <td class="right">${rupiah(number(plan.amount)-actual)}</td>
+      <td>${item.category}</td>
+      <td class="right">${rupiah(item.expected)}</td>
+      <td class="right">${rupiah(item.actual)}</td>
+      <td class="right">${percentText(item.actual,item.expected)}</td>
+      <td class="right">${rupiah(item.expected-item.actual)}</td>
       <td class="status-${status.cls}">${status.text}</td>
     </tr>`;
   }).join("");
 
-  if(!rows){
-    const actualMotor = number(actualCategories["Cicilan Motor"]);
-    const status = debtPaymentStatus(
-      debtExpected["Cicilan Motor"],
-      actualMotor
-    );
-
-    rows = `<tr>
-      <td>Cicilan Motor</td>
-      <td class="right">${rupiah(debtExpected["Cicilan Motor"])}</td>
-      <td class="right">${rupiah(actualMotor)}</td>
-      <td class="right">${percentText(actualMotor,debtExpected["Cicilan Motor"])}</td>
-      <td class="right">${rupiah(debtExpected["Cicilan Motor"]-actualMotor)}</td>
-      <td class="status-${status.cls}">${status.text}</td>
-    </tr>`;
-  }
+  const totalExpected = displayedDebts.reduce(
+    (total,item)=>total+item.expected,
+    0
+  );
+  const totalActual = displayedDebts.reduce(
+    (total,item)=>total+item.actual,
+    0
+  );
+  const totalStatus = debtPaymentStatus(totalExpected,totalActual);
 
   return `<table>
     <tr>
@@ -2613,6 +2647,14 @@ function renderDebtVisualSummary(period,plans){
       <th>Status</th>
     </tr>
     ${rows}
+    <tr class="summary-total-row">
+      <td>Total</td>
+      <td class="right">${rupiah(totalExpected)}</td>
+      <td class="right">${rupiah(totalActual)}</td>
+      <td class="right">${percentText(totalActual,totalExpected)}</td>
+      <td class="right">${rupiah(totalExpected-totalActual)}</td>
+      <td class="status-${totalStatus.cls}">${totalStatus.text}</td>
+    </tr>
   </table>
   <div class="notice" style="margin-top:10px">
     Debt merupakan bagian dari alokasi <b>Needs + Debt 50%</b>.
@@ -4312,7 +4354,7 @@ renderAll();
 
 if("serviceWorker" in navigator){
   window.addEventListener("load", ()=>{
-    navigator.serviceWorker.register("./sw.js?v=20260723-78", {updateViaCache:"none"})
+    navigator.serviceWorker.register("./sw.js?v=20260724-79", {updateViaCache:"none"})
       .then(registration => registration.update())
       .catch(()=>{});
   });
