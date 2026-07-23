@@ -1113,7 +1113,7 @@
   </section>
 </main>
 
-<div class="footer">Money Tracker Cloud Sync · Firebase Edition · v7.10 · Budget Harian Makan</div>
+<div class="footer">Money Tracker Cloud Sync · Firebase Edition · v7.11 · Budget Harian Makan di Needs</div>
 <div id="toast" class="toast"></div>
 
 <script>
@@ -1876,7 +1876,7 @@ function remainingPeriodDays(period, referenceDate=todayISO()){
 
 function visualSummaryTable(group, plans, actualCat, period=null){
   const visiblePlans = plans.filter(p=>p.group===group);
-  const showDailyFoodBudget = group==="Wants";
+  const showDailyFoodBudget = group==="Needs";
   const remainingDays = showDailyFoodBudget
     ? remainingPeriodDays(period)
     : 0;
@@ -4387,7 +4387,7 @@ renderAll();
 
 if("serviceWorker" in navigator){
   window.addEventListener("load", ()=>{
-    navigator.serviceWorker.register("./sw.js?v=20260724-710", {updateViaCache:"none"})
+    navigator.serviceWorker.register("./sw.js?v=20260724-711", {updateViaCache:"none"})
       .then(registration => registration.update())
       .catch(()=>{});
   });
