@@ -1113,7 +1113,7 @@
   </section>
 </main>
 
-<div class="footer">Money Tracker Cloud Sync · Firebase Edition · v7.9 · Total Summary Dashboard</div>
+<div class="footer">Money Tracker Cloud Sync · Firebase Edition · v7.10 · Budget Harian Makan</div>
 <div id="toast" class="toast"></div>
 
 <script>
@@ -1857,18 +1857,50 @@ function donutSVG(items){
     <div class="legend">${legend}</div>
   </div>`;
 }
-function visualSummaryTable(group, plans, actualCat){
+function remainingPeriodDays(period, referenceDate=todayISO()){
+  if(!period?.start || !period?.end) return 0;
+
+  const parseISODate = value => {
+    const [year,month,day] = String(value).split("-").map(Number);
+    return Date.UTC(year,month-1,day);
+  };
+  const start = parseISODate(period.start);
+  const end = parseISODate(period.end);
+  const reference = parseISODate(referenceDate);
+  if(!Number.isFinite(start) || !Number.isFinite(end) || !Number.isFinite(reference)) return 0;
+  if(reference > end) return 0;
+
+  const firstRemainingDay = Math.max(start,reference);
+  return Math.floor((end-firstRemainingDay)/86400000)+1;
+}
+
+function visualSummaryTable(group, plans, actualCat, period=null){
   const visiblePlans = plans.filter(p=>p.group===group);
+  const showDailyFoodBudget = group==="Wants";
+  const remainingDays = showDailyFoodBudget
+    ? remainingPeriodDays(period)
+    : 0;
   const rows = visiblePlans.map(p=>{
     const actual = number(actualCat[p.category]);
     const st = budgetStatus(p.group, p.amount, actual);
     const diff = group==="Income" ? actual-number(p.amount) : number(p.amount)-actual;
+    const isFood = showDailyFoodBudget && norm(p.category)==="makan";
+    const dailyFoodBudget = isFood && remainingDays > 0
+      ? diff/remainingDays
+      : 0;
     return `<tr>
       <td>${p.category}</td>
       <td class="right">${rupiah(p.amount)}</td>
       <td class="right">${rupiah(actual)}</td>
       <td class="right">${percentText(actual, p.amount)}</td>
       <td class="right">${rupiah(diff)}</td>
+      ${showDailyFoodBudget ? `<td class="right">${
+        isFood
+          ? remainingDays > 0
+            ? `<b>${rupiah(dailyFoodBudget)}</b><div class="mini">${remainingDays} hari tersisa</div>`
+            : `<span class="mini">Periode berakhir</span>`
+          : "—"
+      }</td>` : ""}
       <td class="status-${st.cls}">${st.text}</td>
     </tr>`;
   }).join("");
@@ -1888,7 +1920,7 @@ function visualSummaryTable(group, plans, actualCat){
   const totalStatus = budgetStatus(group,totalExpected,totalActual);
 
   return `<table>
-    <tr><th>Category</th><th class="right">Expected</th><th class="right">Actual</th><th class="right">%</th><th class="right">Selisih</th><th>Status</th></tr>
+    <tr><th>Category</th><th class="right">Expected</th><th class="right">Actual</th><th class="right">%</th><th class="right">Selisih</th>${showDailyFoodBudget ? `<th class="right">Budget Harian</th>` : ""}<th>Status</th></tr>
     ${rows}
     <tr class="summary-total-row">
       <td>Total</td>
@@ -1896,6 +1928,7 @@ function visualSummaryTable(group, plans, actualCat){
       <td class="right">${rupiah(totalActual)}</td>
       <td class="right">${percentText(totalActual,totalExpected)}</td>
       <td class="right">${rupiah(totalDiff)}</td>
+      ${showDailyFoodBudget ? `<td class="right">—</td>` : ""}
       <td class="status-${totalStatus.cls}">${totalStatus.text}</td>
     </tr>
   </table>`;
@@ -2113,7 +2146,7 @@ function renderVisualDashboard(period, groups, plans){
     visualSummaryTable("Needs",plans,actualCat);
 
   document.getElementById("visualWants").innerHTML =
-    visualSummaryTable("Wants",plans,actualCat);
+    visualSummaryTable("Wants",plans,actualCat,period);
 
   document.getElementById("visualDebt").innerHTML =
     renderDebtVisualSummary(period,plans);
@@ -4354,7 +4387,7 @@ renderAll();
 
 if("serviceWorker" in navigator){
   window.addEventListener("load", ()=>{
-    navigator.serviceWorker.register("./sw.js?v=20260724-79", {updateViaCache:"none"})
+    navigator.serviceWorker.register("./sw.js?v=20260724-710", {updateViaCache:"none"})
       .then(registration => registration.update())
       .catch(()=>{});
   });
