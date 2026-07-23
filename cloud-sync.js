@@ -175,23 +175,35 @@ if(!configReady){
 
   function cloudHasData(){ return !!cloudSettings || cloudTransactions.size > 0; }
 
+  function applySnapshotToDevice(nextState,meta={}){
+    applyingSnapshot = true;
+    try{
+      return hooks().applyCloudState(nextState,meta);
+    }finally{
+      applyingSnapshot = false;
+    }
+  }
+
   async function applyInitialCloud(){
     if(!currentUser || initialCloudApplied || !settingsLoaded || !transactionsLoaded || !hooks()) return;
     initialCloudApplied = true;
-    const local = hooks().getState();
-    if(!cloudHasData()){
-      emitCurrent("syncing","Cloud masih kosong. Data device ini sedang dinaikkan.","Mengirim data");
-      await uploadState(local,{force:true,replace:false});
-      return;
+    try{
+      const local = hooks().getState();
+      if(!cloudHasData()){
+        emitCurrent("syncing","Cloud masih kosong. Data device ini sedang dinaikkan.","Mengirim data");
+        await uploadState(local,{force:true,replace:false});
+        return;
+      }
+      const localSettingsDirty = hash(settingsFromState(local)) !== lastSettingsHash;
+      const merged = stateFromCloud(local, localSettingsDirty && (local.transactions?.length || 0) > 0);
+      applySnapshotToDevice(merged,{showToast:false,message:"Data cloud sudah masuk."});
+      pendingState = merged;
+      await uploadState(merged,{force:false,replace:false});
+      emitCurrent("ready","Data MacBook dan iPhone sudah terhubung.","Cloud aktif");
+    }catch(error){
+      initialCloudApplied = false;
+      throw error;
     }
-    const localSettingsDirty = hash(settingsFromState(local)) !== lastSettingsHash;
-    const merged = stateFromCloud(local, localSettingsDirty && (local.transactions?.length || 0) > 0);
-    applyingSnapshot = true;
-    hooks().applyCloudState(merged,{showToast:false,message:"Data cloud sudah masuk."});
-    applyingSnapshot = false;
-    pendingState = merged;
-    await uploadState(merged,{force:false,replace:false});
-    emitCurrent("ready","Data MacBook dan iPhone sudah terhubung.","Cloud aktif");
   }
 
   async function applyRealtimeCloud(){
@@ -202,9 +214,7 @@ if(!configReady){
     const before = hash(local);
     const after = hash(merged);
     if(before !== after){
-      applyingSnapshot = true;
-      hooks().applyCloudState(merged,{showToast:false});
-      applyingSnapshot = false;
+      applySnapshotToDevice(merged,{showToast:false});
     }
     emitCurrent(navigator.onLine ? "ready" : "offline", navigator.onLine ? "Perubahan terbaru sudah masuk." : "Offline. Data menunggu internet.", navigator.onLine ? "Cloud aktif" : "Mode offline");
   }
@@ -307,9 +317,7 @@ if(!configReady){
     cloudTransactions = new Map(txSnap.docs.map(d=>[d.id,stripTxMeta(d.data())]));
     const local = hooks().getState();
     const remoteOnly = stateFromCloud({...local,transactions:[],sync:{deletedTransactionIds:[]}},false);
-    applyingSnapshot = true;
-    hooks().applyCloudState(remoteOnly,{message:"Data cloud sudah dipasang di device ini."});
-    applyingSnapshot = false;
+    applySnapshotToDevice(remoteOnly,{message:"Data cloud sudah dipasang di device ini."});
     lastSyncAt = Date.now();
     emitCurrent("ready","Data cloud sudah diambil.","Cloud aktif");
   }
