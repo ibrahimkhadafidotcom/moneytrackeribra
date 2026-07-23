@@ -1270,6 +1270,74 @@ function showToast(msg){
   setTimeout(()=>t.classList.remove("show"), 2600);
 }
 
+const LOCAL_BACKUP_PREFIXES = [
+  "money_tracker_before_cloud_",
+  "money_tracker_before_merge_import_",
+  "money_tracker_before_full_import_"
+];
+
+function isStorageQuotaError(error){
+  return !!error && (
+    error.name === "QuotaExceededError" ||
+    error.name === "NS_ERROR_DOM_QUOTA_REACHED" ||
+    error.code === 22 ||
+    error.code === 1014
+  );
+}
+
+function localBackupKeys(){
+  const keys = [];
+  for(let index = 0; index < localStorage.length; index++){
+    const key = localStorage.key(index);
+    if(key && LOCAL_BACKUP_PREFIXES.some(prefix=>key.startsWith(prefix))){
+      keys.push(key);
+    }
+  }
+  return keys.sort((a,b)=>{
+    const aTime = Number(a.match(/(\d+)$/)?.[1] || 0);
+    const bTime = Number(b.match(/(\d+)$/)?.[1] || 0);
+    return bTime - aTime;
+  });
+}
+
+function pruneLocalBackups(keep=1){
+  let removed = 0;
+  localBackupKeys().slice(Math.max(0,keep)).forEach(key=>{
+    localStorage.removeItem(key);
+    removed++;
+  });
+  return removed;
+}
+
+function createLocalBackup(prefix){
+  const key = prefix + Date.now();
+  const payload = JSON.stringify(state);
+  try{
+    localStorage.setItem(key,payload);
+    pruneLocalBackups(1);
+    return {saved:true,cleaned:false};
+  }catch(error){
+    if(!isStorageQuotaError(error)) return {saved:false,cleaned:false,error};
+    pruneLocalBackups(0);
+    try{
+      localStorage.setItem(key,payload);
+      return {saved:true,cleaned:true};
+    }catch(retryError){
+      return {saved:false,cleaned:true,error:retryError};
+    }
+  }
+}
+
+function persistStateLocally(payload){
+  try{
+    localStorage.setItem(STORAGE_KEY,payload);
+  }catch(error){
+    if(!isStorageQuotaError(error)) throw error;
+    pruneLocalBackups(0);
+    localStorage.setItem(STORAGE_KEY,payload);
+  }
+}
+
 function loadState(){
   const raw = localStorage.getItem(STORAGE_KEY);
   if(raw){
@@ -1305,7 +1373,7 @@ function saveState(options={}){
     state.sync.lastLocalChangeAt = Date.now();
     state.sync.lastChangedByDevice = DEVICE_ID;
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  persistStateLocally(JSON.stringify(state));
   if(!options.skipCloud && !applyingCloudState && window.MoneyCloud?.queueState){
     window.MoneyCloud.queueState(state);
   }
@@ -3891,8 +3959,7 @@ function transactionImportSignature(tx){
 }
 
 function mergeImportData(data){
-  const backupKey = "money_tracker_before_merge_import_" + Date.now();
-  localStorage.setItem(backupKey, JSON.stringify(state));
+  createLocalBackup("money_tracker_before_merge_import_");
 
   const result = {
     transactionsAdded:0,
@@ -4078,8 +4145,7 @@ function importBackup(){
         return;
       }
 
-      const backupKey = "money_tracker_before_full_import_" + Date.now();
-      localStorage.setItem(backupKey, JSON.stringify(state));
+      createLocalBackup("money_tracker_before_full_import_");
 
       state = normalizeState(data);
       saveState();
@@ -4186,18 +4252,30 @@ window.moneyTrackerHooks = {
   getState:()=>JSON.parse(JSON.stringify(state)),
   getDeviceId:()=>DEVICE_ID,
   applyCloudState:(newState, meta={})=>{
+    const previousState = state;
+    const backupResult = createLocalBackup("money_tracker_before_cloud_");
+    applyingCloudState = true;
     try{
-      const backupKey = "money_tracker_before_cloud_" + Date.now();
-      localStorage.setItem(backupKey, JSON.stringify(state));
-      applyingCloudState = true;
       state = normalizeState(JSON.parse(JSON.stringify(newState)));
       saveState({skipCloud:true, skipTouch:true});
-      renderAll();
-      applyingCloudState = false;
-      if(meta.showToast !== false) showToast(meta.message || "Data cloud masuk. Tampilan sudah diperbarui.");
+      try{
+        renderAll();
+      }catch(renderError){
+        console.error("Data cloud tersimpan, tetapi refresh tampilan gagal:",renderError);
+      }
+      if(meta.showToast !== false){
+        const message = backupResult.saved
+          ? (meta.message || "Data cloud masuk. Tampilan sudah diperbarui.")
+          : "Data cloud berhasil dipasang. Backup lokal dilewati karena ruang browser terbatas.";
+        showToast(message);
+      }
+      return true;
     }catch(e){
-      applyingCloudState = false;
+      state = previousState;
       showToast("Data cloud gagal dipasang: " + e.message);
+      throw e;
+    }finally{
+      applyingCloudState = false;
     }
   }
 };
@@ -4234,12 +4312,12 @@ renderAll();
 
 if("serviceWorker" in navigator){
   window.addEventListener("load", ()=>{
-    navigator.serviceWorker.register("./sw.js?v=20260723-73", {updateViaCache:"none"})
+    navigator.serviceWorker.register("./sw.js?v=20260723-78", {updateViaCache:"none"})
       .then(registration => registration.update())
       .catch(()=>{});
   });
 }
 </script>
-<script type="module" src="./cloud-sync.js?v=20260723-75"></script>
+<script type="module" src="./cloud-sync.js?v=20260723-78"></script>
 </body>
 </html>
