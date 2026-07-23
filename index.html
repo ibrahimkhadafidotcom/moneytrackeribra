@@ -1113,7 +1113,7 @@
   </section>
 </main>
 
-<div class="footer">Money Tracker Cloud Sync · Firebase Edition · v7.11 · Budget Harian Makan di Needs</div>
+<div class="footer">Money Tracker Cloud Sync · Firebase Edition · v7.12 · Perbaikan Budget Harian Makan</div>
 <div id="toast" class="toast"></div>
 
 <script>
@@ -2143,10 +2143,10 @@ function renderVisualDashboard(period, groups, plans){
   renderCategoryBudgetHealth(period,plans);
 
   document.getElementById("visualNeeds").innerHTML =
-    visualSummaryTable("Needs",plans,actualCat);
+    visualSummaryTable("Needs",plans,actualCat,period);
 
   document.getElementById("visualWants").innerHTML =
-    visualSummaryTable("Wants",plans,actualCat,period);
+    visualSummaryTable("Wants",plans,actualCat);
 
   document.getElementById("visualDebt").innerHTML =
     renderDebtVisualSummary(period,plans);
@@ -4387,7 +4387,7 @@ renderAll();
 
 if("serviceWorker" in navigator){
   window.addEventListener("load", ()=>{
-    navigator.serviceWorker.register("./sw.js?v=20260724-711", {updateViaCache:"none"})
+    navigator.serviceWorker.register("./sw.js?v=20260724-712", {updateViaCache:"none"})
       .then(registration => registration.update())
       .catch(()=>{});
   });
