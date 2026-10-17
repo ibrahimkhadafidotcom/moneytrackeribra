@@ -735,7 +735,7 @@
             <select id="manualAccount"></select>
           </div>
           <div class="field col-6">
-            <label>Rekening Tujuan Transfer</label>
+            <label>Rekening Tujuan Transfer (Tabungan otomatis ke TABUNGAN)</label>
             <select id="manualToAccount"></select>
           </div>
           <div class="field col-12">
@@ -1516,13 +1516,39 @@ function parseTransactionText(text){
     status: amount > 0 ? "OK" : "Amount Missing"
   };
 }
+function savingsDestinationAccount(){
+  return state.accounts.find(a => a.savingsDestination) ||
+    state.accounts.find(a => norm(a.name) === "tabungan") || null;
+}
+function isSavingsTransfer(tx){
+  return tx.type === "Pengeluaran" && norm(tx.category) === "tabungan" &&
+    tx.savingsTransfer === true && !!tx.toAccount &&
+    norm(tx.account) !== norm(tx.toAccount);
+}
+function prepareSavingsTransfer(tx){
+  if(tx.type !== "Pengeluaran" || norm(tx.category) !== "tabungan") return true;
+  const destination = savingsDestinationAccount();
+  if(!destination){
+    showToast('Buat rekening "TABUNGAN" di Master Rekening terlebih dahulu.');
+    return false;
+  }
+  if(norm(tx.account) === norm(destination.name)){
+    showToast("Rekening asal harus berbeda dari rekening TABUNGAN.");
+    return false;
+  }
+  tx.toAccount = destination.name;
+  tx.savingsTransfer = true;
+  return true;
+}
 function addTransaction(tx){
+  if(!prepareSavingsTransfer(tx)) return false;
   if(!tx.id) tx.id = uid("TRX");
   if(!tx.timestampInput) tx.timestampInput = new Date().toISOString();
   if(!tx.group) tx.group = tx.type==="Transfer" ? "Transfer" : getGroupByCategory(tx.category);
   state.transactions.push(tx);
   saveState();
   renderAll();
+  return true;
 }
 
 function parseQuickInput(){
@@ -1551,7 +1577,7 @@ function saveQuickInput(){
   const tx = parseQuickInput();
   if(!tx) return;
   if(!tx.amount){ showToast("Nominal belum terbaca. Cek teks transaksi."); return; }
-  addTransaction(tx);
+  if(!addTransaction(tx)) return;
   document.getElementById("quickText").value = "";
   document.getElementById("parsePreview").innerHTML = "";
   showToast("Transaksi berhasil disimpan.");
@@ -1574,7 +1600,7 @@ function saveManualInput(){
     status:"OK"
   };
   if(!tx.amount){ showToast("Nominal wajib diisi."); return; }
-  addTransaction(tx);
+  if(!addTransaction(tx)) return;
   document.getElementById("manualAmount").value = "";
   document.getElementById("manualNote").value = "";
   showToast("Transaksi manual berhasil disimpan.");
@@ -1613,6 +1639,17 @@ function computeAccountBalancesRealtime(){
     } else if(tx.type === "Pengeluaran"){
       balances[tx.account] -= amt;
       expense[tx.account] += amt;
+      if(isSavingsTransfer(tx)){
+        if(!Object.prototype.hasOwnProperty.call(balances,tx.toAccount)){
+          balances[tx.toAccount] = 0;
+          income[tx.toAccount] = 0;
+          expense[tx.toAccount] = 0;
+          transferIn[tx.toAccount] = 0;
+          transferOut[tx.toAccount] = 0;
+        }
+        balances[tx.toAccount] += amt;
+        transferIn[tx.toAccount] += amt;
+      }
     } else if(tx.type === "Transfer"){
       balances[tx.account] -= amt;
       transferOut[tx.account] += amt;
@@ -1666,7 +1703,12 @@ function computeAccountBalances(period){
   for(const tx of state.transactions){
     if(period && !isInPeriod(tx, period)) continue;
     if(tx.type === "Pemasukan") balances[tx.account] = number(balances[tx.account]) + number(tx.amount);
-    else if(tx.type === "Pengeluaran") balances[tx.account] = number(balances[tx.account]) - number(tx.amount);
+    else if(tx.type === "Pengeluaran"){
+      balances[tx.account] = number(balances[tx.account]) - number(tx.amount);
+      if(isSavingsTransfer(tx)){
+        balances[tx.toAccount] = number(balances[tx.toAccount]) + number(tx.amount);
+      }
+    }
     else if(tx.type === "Transfer"){
       balances[tx.account] = number(balances[tx.account]) - number(tx.amount);
       if(tx.toAccount) balances[tx.toAccount] = number(balances[tx.toAccount]) + number(tx.amount);
@@ -3755,7 +3797,7 @@ function saveEditedTransaction(){
     }
   }
 
-  state.transactions[index] = {
+  const updatedTransaction = {
     ...oldTransaction,
     date,
     type,
@@ -3764,11 +3806,14 @@ function saveEditedTransaction(){
     amount,
     account,
     toAccount,
+    savingsTransfer:false,
     note,
     status:"EDITED",
     lastEditedAt:new Date().toISOString(),
     lastEditedByDevice:DEVICE_ID
   };
+  if(!prepareSavingsTransfer(updatedTransaction)) return;
+  state.transactions[index] = updatedTransaction;
 
   state.sync = state.sync || {};
   state.sync.deletedTransactionIds = (
@@ -3972,13 +4017,16 @@ function saveAccount(){
     const previousName = account.name;
     account.name = name;
     account.startBalance = startBalance;
+    if(norm(previousName) === "tabungan" || norm(name) === "tabungan"){
+      account.savingsDestination = true;
+    }
 
     state.transactions.forEach(transaction => {
       if(norm(transaction.account) === norm(previousName)) transaction.account = name;
       if(norm(transaction.toAccount) === norm(previousName)) transaction.toAccount = name;
     });
   }else{
-    state.accounts.push({name, startBalance});
+    state.accounts.push({name, startBalance, savingsDestination:norm(name) === "tabungan"});
   }
 
   resetAccountEditor();
@@ -4387,7 +4435,7 @@ renderAll();
 
 if("serviceWorker" in navigator){
   window.addEventListener("load", ()=>{
-    navigator.serviceWorker.register("./sw.js?v=20260724-712", {updateViaCache:"none"})
+    navigator.serviceWorker.register("./sw.js?v=20261017-713", {updateViaCache:"none"})
       .then(registration => registration.update())
       .catch(()=>{});
   });
