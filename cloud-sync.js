@@ -93,6 +93,8 @@ if(!configReady){
   let uploadTimer = null;
   let lastSyncAt = null;
   let applyingSnapshot = false;
+  let observedLocalSettingsHash = null;
+  let localSettingsPending = false;
 
   const hooks = ()=>window.moneyTrackerHooks;
   const settingsRef = uid=>doc(db,"users",uid,"settings","app");
@@ -113,9 +115,16 @@ if(!configReady){
           saving:20
         }
       ),
-      sync:deepClone(state.sync || {deletedTransactionIds:[]}),
+      sync:{deletedTransactionIds:deepClone(state.sync?.deletedTransactionIds || [])},
       schemaVersion:7
     };
+  }
+  function settingsIdentity(state){
+    const {sync, ...settings} = settingsFromState(state);
+    return hash(settings);
+  }
+  function observeLocalSettings(state){
+    observedLocalSettingsHash = settingsIdentity(state);
   }
   function stateFromCloud(localState, preferLocalSettings=false){
     const local = deepClone(localState || {});
@@ -194,9 +203,10 @@ if(!configReady){
         await uploadState(local,{force:true,replace:false});
         return;
       }
-      const localSettingsDirty = hash(settingsFromState(local)) !== lastSettingsHash;
-      const merged = stateFromCloud(local, localSettingsDirty && (local.transactions?.length || 0) > 0);
+      const merged = stateFromCloud(local, localSettingsPending);
       applySnapshotToDevice(merged,{showToast:false,message:"Data cloud sudah masuk."});
+      observeLocalSettings(merged);
+      localSettingsPending = false;
       pendingState = merged;
       await uploadState(merged,{force:false,replace:false});
       emitCurrent("ready","Data MacBook dan iPhone sudah terhubung.","Cloud aktif");
@@ -209,12 +219,12 @@ if(!configReady){
   async function applyRealtimeCloud(){
     if(!currentUser || !initialCloudApplied || !settingsLoaded || !transactionsLoaded || !hooks() || applyingSnapshot) return;
     const local = hooks().getState();
-    const localSettingsDirty = hash(settingsFromState(local)) !== lastSettingsHash;
-    const merged = stateFromCloud(local, localSettingsDirty);
+    const merged = stateFromCloud(local, localSettingsPending);
     const before = hash(local);
     const after = hash(merged);
     if(before !== after){
       applySnapshotToDevice(merged,{showToast:false});
+      if(!localSettingsPending) observeLocalSettings(merged);
     }
     emitCurrent(navigator.onLine ? "ready" : "offline", navigator.onLine ? "Perubahan terbaru sudah masuk." : "Offline. Data menunggu internet.", navigator.onLine ? "Cloud aktif" : "Mode offline");
   }
@@ -275,6 +285,10 @@ if(!configReady){
     try{
       await commitOperations(ops);
       lastSettingsHash = hash(settings);
+      if(settingsIdentity(hooks()?.getState?.() || state) === settingsIdentity(state)){
+        observeLocalSettings(state);
+        localSettingsPending = false;
+      }
       lastTransactionHashes = new Map([...currentTx.entries()].filter(([id])=>!tombstones.has(id)).map(([id,tx])=>[id,hash(tx)]));
       lastSyncAt = Date.now();
       emitCurrent(navigator.onLine ? "ready" : "offline", navigator.onLine ? "Semua perubahan sudah tersimpan." : "Perubahan tersimpan di device dan menunggu internet.", navigator.onLine ? "Cloud aktif" : "Mode offline");
@@ -287,6 +301,9 @@ if(!configReady){
 
   function queueState(state){
     if(!currentUser || applyingSnapshot) return;
+    const nextSettingsHash = settingsIdentity(state);
+    if(observedLocalSettingsHash === null) observedLocalSettingsHash = nextSettingsHash;
+    else if(nextSettingsHash !== observedLocalSettingsHash) localSettingsPending = true;
     pendingState = deepClone(state);
     if(!initialCloudApplied) return;
     clearTimeout(uploadTimer);
@@ -318,6 +335,8 @@ if(!configReady){
     const local = hooks().getState();
     const remoteOnly = stateFromCloud({...local,transactions:[],sync:{deletedTransactionIds:[]}},false);
     applySnapshotToDevice(remoteOnly,{message:"Data cloud sudah dipasang di device ini."});
+    observeLocalSettings(remoteOnly);
+    localSettingsPending = false;
     lastSyncAt = Date.now();
     emitCurrent("ready","Data cloud sudah diambil.","Cloud aktif");
   }
@@ -332,10 +351,13 @@ if(!configReady){
     lastSettingsHash = "";
     lastTransactionHashes = new Map();
     initialCloudApplied = false;
+    observedLocalSettingsHash = null;
+    localSettingsPending = false;
   }
 
   function startListeners(user){
     stopListeners();
+    if(hooks()) observeLocalSettings(hooks().getState());
     unsubscribeSettings = onSnapshot(settingsRef(user.uid),{includeMetadataChanges:true},snap=>{
       cloudSettings = snap.exists() ? snap.data() : null;
       if(cloudSettings){
@@ -343,6 +365,7 @@ if(!configReady){
         delete copy.updatedAt;
         delete copy.updatedAtMs;
         delete copy.updatedByDevice;
+        copy.sync = {deletedTransactionIds:copy.sync?.deletedTransactionIds || []};
         lastSettingsHash = hash(copy);
       }else lastSettingsHash = "";
       settingsLoaded = true;
