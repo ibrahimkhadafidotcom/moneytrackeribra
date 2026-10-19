@@ -256,7 +256,7 @@ if(!configReady){
     const opMap = new Map();
     const putOp = op=>opMap.set(op.ref.path,op);
 
-    if(force || hash(settings) !== lastSettingsHash){
+    if(force || (localSettingsPending && hash(settings) !== lastSettingsHash)){
       putOp({type:"set",ref:settingsRef(uid),data:settingsData,options:{merge:false}});
     }
 
